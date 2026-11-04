@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Mobile app for measurement notes and single-page PDF printing. Single screen, zero tabs, pure popups.">
+  <title>SizeNotes - Measurement Notes & PDF Print</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- SINGLE SCREEN MOBILE SHELL (NO TABS) -->
+  <main class="app-shell" id="app">
+    
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-top">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"></path>
+              <path d="m14.5 12.5 2-2"></path>
+              <path d="m11.5 9.5 2-2"></path>
+              <path d="m8.5 6.5 2-2"></path>
+              <path d="m17.5 15.5 2-2"></path>
+            </svg>
+          </div>
+          <span>SizeNotes</span>
+        </div>
+
+        <div class="header-actions">
+          <!-- Sketch Doodle Popup Trigger -->
+          <button class="icon-btn" id="btnOpenSketch" title="Draw Sketch / Diagram">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            <span class="badge-dot" id="sketchBadgeDot" style="display: none;"></span>
+          </button>
+
+          <!-- Templates Popup Trigger -->
+          <button class="icon-btn" id="btnOpenTemplates" title="Measurement Templates">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </button>
+
+          <!-- Unit Converter Popup Trigger -->
+          <button class="icon-btn" id="btnOpenConverter" title="Unit Converter & Calculator">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+              <line x1="8" y1="6" x2="16" y2="6"></line>
+              <line x1="16" y1="14" x2="16" y2="18"></line>
+              <path d="M16 10h.01"></path>
+              <path d="M12 10h.01"></path>
+              <path d="M8 10h.01"></path>
+              <path d="M12 14h.01"></path>
+              <path d="M8 14h.01"></path>
+              <path d="M12 18h.01"></path>
+              <path d="M8 18h.01"></path>
+            </svg>
+          </button>
+
+          <!-- Print / PDF Popup Trigger -->
+          <button class="icon-btn primary" id="btnOpenPdf" title="Print PDF Page">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Project Switcher Bar (Opens Projects Modal) -->
+      <div class="project-selector-bar" id="btnOpenProjects" title="Switch or Manage Project Notes">
+        <div class="project-info">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span class="project-title" id="displayProjectTitle">Sample Measurement Sheet</span>
+          <span class="project-tag" id="displayProjectCategory">General</span>
+        </div>
+        <div class="project-dropdown-arrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- Project Summary Card -->
+    <section class="summary-bar">
+      <div class="stat-card">
+        <span class="stat-label">Items</span>
+        <span class="stat-value" id="statItemCount">0</span>
+        <span class="stat-sub" id="statVerifiedSub">0 verified</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Main Unit</span>
+        <span class="stat-value" id="statMainUnit">cm</span>
+        <span class="stat-sub" id="statUnitCount">1 unit type</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Sum</span>
+        <span class="stat-value" id="statTotalSum">0</span>
+        <span class="stat-sub" id="statGroupCount">1 group</span>
+      </div>
+    </section>
+
+    <!-- Unified Search & Category Filter Bar (Category Dropdown integrated inside Search Bar) -->
+    <section class="search-filter-bar">
+      <div class="search-box-unified" id="searchBoxUnified">
+        <!-- Integrated Category Dropdown Button -->
+        <div class="search-cat-dropdown" id="searchCatDropdown">
+          <button type="button" class="search-cat-btn" id="searchCatBtn" aria-haspopup="true" aria-expanded="false" title="Filter by Category">
+            <span class="search-cat-icon">🏷️</span>
+            <span class="search-cat-label" id="searchCatLabel">All</span>
+            <svg class="search-cat-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- Dropdown List Popup -->
+          <div class="search-cat-menu" id="searchCatMenu" role="menu">
+            <!-- Dynamically populated with category options + counts -->
+          </div>
+        </div>
+
+        <div class="search-divider"></div>
+
+        <!-- Search Input -->
+        <div class="search-input-wrapper">
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search measurements or notes..." autocomplete="off">
+          <button id="btnClearSearch" class="clear-search-btn" title="Clear search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Measurement Items List -->
+    <section class="measurement-list-container">
+      <div class="measurement-list" id="measurementList">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+        </div>
+        <div class="empty-title">No Measurements Yet</div>
+        <div class="empty-desc">Take your first measurement note or load a starter template.</div>
+        <div class="empty-actions">
+          <button class="btn btn-primary" id="btnEmptyAdd">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add
+          </button>
+          <button class="btn btn-secondary" id="btnEmptyTemplate">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            Templates
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Actions Bar (Strictly NO TABS, Only Primary Actions) -->
+    <nav class="bottom-actions-bar">
+      <button class="btn-quick-pdf" id="btnBottomPdf" title="Print PDF Page">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        <span>PDF</span>
+      </button>
+
+      <button class="btn-add-primary" id="btnOpenAddMeasurement">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Add</span>
+      </button>
+
+      <button class="btn-quick-pdf" id="btnBottomSketch" title="Doodle / Sketch Diagram">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+        <span>Sketch</span>
+      </button>
+    </nav>
+  </main>
+
+  <!-- ==========================================================================
+       POPUP MODALS (NO TABS, ONLY POPUPS)
+       ========================================================================== -->
+
+  <!-- POPUP 1: Add / Edit Measurement Modal -->
+  <div class="popup-overlay" id="popupMeasurement">
+    <div class="popup-sheet">
+      <div class="popup-header">
+        <div class="popup-drag-handle"></div>
+        <div class="popup-title" id="measurementModalTitle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"></path>
+          </svg>
+          <span>Add Measurement</span>
+        </div>
+        <button class="popup-close-btn" data-close-popup title="Close popup">&times;</button>
+      </div>
+
+      <div class="popup-body">
+        <!-- Label Field -->
+        <div class="form-group">
+          <label class="form-label" for="inputItemLabel">Dimension / Item Name</label>
+          <input type="text" id="inputItemLabel" class="form-input" placeholder="e.g. Length, Waist, Window Width, Shelf A..." autocomplete="off">
+          
+          <!-- Label suggestions based on context -->
+          <div class="suggestion-chips" id="labelSuggestions">
+            <span class="sugg-chip" data-label="Length">Length</span>
+            <span class="sugg-chip" data-label="Width">Width</span>
+            <span class="sugg-chip" data-label="Height">Height</span>
+            <span class="sugg-chip" data-label="Depth">Depth</span>
+            <span class="sugg-chip" data-label="Thickness">Thickness</span>
+            <span class="sugg-chip" data-label="Clearance">Clearance</span>
+            <span class="sugg-chip" data-label="Chest">Chest</span>
+            <span class="sugg-chip" data-label="Waist">Waist</span>
+            <span class="sugg-chip" data-label="Inseam">Inseam</span>
+          </div>
+        </div>
+
+        <!-- Value & Unit Grid -->
+        <div class="measurement-input-grid">
+          <div class="form-group">
+            <label class="form-label" for="inputItemValue">Measurement Value</label>
+            <div class="value-input-wrapper">
+              <input type="text" id="inputItemValue" class="form-input" placeholder="0.0" inputmode="decimal">
+            </div>
+            <!-- Quick numeric adjustments -->
+            <div class="quick-value-helpers">
+              <button type="button" class="helper-btn" data-inc="-1">-1</button>
+              <button type="button" class="helper-btn" data-inc="+1">+1</button>
+              <button type="button" class="helper-btn" data-inc="+0.5">+0.5</button>
+              <button type="button" class="helper-btn" data-frac=" 1/4">¼</button>
+              <button type="button" class="helper-btn" data-frac=" 1/2">½</button>
+              <button type="button" class="helper-btn" data-frac=" 3/4">¾</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="selectItemUnit">Unit</label>
+            <select id="selectItemUnit" class="form-select">
+              <option value="cm">cm</option>
+              <option value="in">in (")</option>
+              <option value="mm">mm</option>
+              <option value="m">m</option>
+              <option value="ft">ft (')</option>
+              <option value="yd">yd</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Category Tag -->
+        <div class="form-group">
+          <label class="form-label" for="inputItemCategory">Category / Room / Part</label>
+          <input type="text" id="inputItemCategory" class="form-input" placeholder="e.g. Living Room, Outerwear, Hardware, Frame..." list="categoryList">
+          <datalist id="categoryList">
+            <option value="General">
+            <option value="Room Dimensions">
+            <option value="Windows & Doors">
+            <option value="Cabinetry">
+            <option value="Upper Body">
+            <option value="Lower Body">
+            <option value="Hardware">
+          </datalist>
+        </div>
+
+        <!-- Notes / Specs -->
+        <div class="form-group">
+          <label class="form-label" for="inputItemNotes">Notes / Specifications (Optional)</label>
+          <textarea id="inputItemNotes" class="form-textarea" placeholder="e.g. Include 1/2 inch tolerance, Oak grain direction, Seam allowance..."></textarea>
+        </div>
+
+        <!-- Status Checkbox -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="checkVerified" style="width: 18px; height: 18px; accent-color: var(--success); cursor: pointer;">
+          <label for="checkVerified" style="font-size: 0.88rem; color: var(--text-primary); cursor: pointer;">Mark as verified / measured on-site</label>
+        </div>
+      </div>
+
+      <div class="popup-footer">
+        <button type="button" class="btn btn-danger" id="btnDeleteMeasurement" style="display: none;">Delete</button>
+        <button type="button" class="btn btn-secondary" style="flex: 1;" data-close-popup>Cancel</button>
+        <button type="button" class="btn btn-primary" style="flex: 1.5;" id="btnSaveMeasurement">Save</button>
+        <button type="button" class="btn btn-secondary" id="btnSaveAndNext" title="Save and immediately add another note">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP 2: Project Switcher & Manager Modal -->
+  <div class="popup-overlay" id="popupProjects">
+    <div class="popup-sheet">
+      <div class="popup-header">
+        <div class="popup-drag-handle"></div>
+        <div class="popup-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Projects & Sheets</span>
+        </div>
+        <button class="popup-close-btn" data-close-popup>&times;</button>
+      </div>
+
+      <div class="popup-body">
+        <!-- New Project Inline Form -->
+        <div style="background: var(--bg-input); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase;">+ Create New Sheet</span>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="inputNewProjectName" class="form-input" placeholder="Project name (e.g. Master Bedroom, Tailor: John)..." style="flex: 1;">
+            <button class="btn btn-primary" id="btnCreateProject" style="height: auto; padding: 0 14px;">Create</button>
+          </div>
+        </div>
+
+        <!-- Saved Projects List -->
+        <div class="form-label">Existing Sheets</div>
+        <div class="project-list" id="projectListContainer">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Backup / Data Tools -->
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-block" id="btnExportData" style="font-size: 0.8rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export
+          </button>
+          <label class="btn btn-secondary btn-block" style="font-size: 0.8rem; cursor: pointer; text-align: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Import
+            <input type="file" id="importFileInput" accept=".json" style="display: none;">
+          </label>
+        </div>
+      </div>
+
+      <div class="popup-footer">
+        <button type="button" class="btn btn-secondary btn-block" data-close-popup>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP 3: Sketch & Diagram Pad Modal -->
+  <div class="popup-overlay" id="popupSketch">
+    <div class="popup-sheet">
+      <div class="popup-header">
+        <div class="popup-drag-handle"></div>
+        <div class="popup-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          <span>Visual Diagram & Sketch</span>
+        </div>
+        <button class="popup-close-btn" data-close-popup>&times;</button>
+      </div>
+
+      <div class="popup-body">
+        <div class="sketch-container">
+          <!-- Canvas Toolbar -->
+          <div class="canvas-toolbar">
+            <div class="canvas-tools-group">
+              <button class="tool-btn active" id="toolPen" title="Freehand Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                  <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                </svg>
+              </button>
+              <button class="tool-btn" id="toolLine" title="Straight Line">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="19" x2="19" y2="5"></line>
+                </svg>
+              </button>
+              <button class="tool-btn" id="toolArrow" title="Dimension Arrow (<--->)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="4" y1="12" x2="20" y2="12"></line>
+                  <polyline points="8 8 4 12 8 16"></polyline>
+                  <polyline points="16 8 20 12 16 16"></polyline>
+                </svg>
+              </button>
+              <button class="tool-btn" id="toolRect" title="Rectangle / Box">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                </svg>
+              </button>
+              <button class="tool-btn" id="toolEraser" title="Eraser">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="7 21 21 21"></polyline>
+                  <path d="M18 10L14 6l-9 9 4 4 9-9z"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Colors -->
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <span class="color-dot active" data-color="#0284c7" style="background: #0284c7;"></span>
+              <span class="color-dot" data-color="#0f172a" style="background: #0f172a; border-color: #64748b;"></span>
+              <span class="color-dot" data-color="#ef4444" style="background: #ef4444;"></span>
+              <span class="color-dot" data-color="#10b981" style="background: #10b981;"></span>
+            </div>
+
+            <!-- History Actions -->
+            <div style="display: flex; gap: 4px;">
+              <button class="tool-btn" id="toolUndo" title="Undo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+              </button>
+              <button class="tool-btn" id="toolClear" title="Clear Canvas">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Drawing Canvas -->
+          <div class="canvas-wrapper">
+            <canvas id="sketchCanvas"></canvas>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span>💡 Draw arrows & write numbers on parts</span>
+            <span id="sketchStatusLabel">No sketch saved</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="popup-footer">
+        <button type="button" class="btn btn-danger" id="btnRemoveSketch">Delete</button>
+        <button type="button" class="btn btn-secondary" style="flex: 1;" data-close-popup>Cancel</button>
+        <button type="button" class="btn btn-primary" style="flex: 1.5;" id="btnSaveSketch">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP 4: PDF Print & Export Modal -->
+  <div class="popup-overlay" id="popupPdf">
+    <div class="popup-sheet">
+      <div class="popup-header">
+        <div class="popup-drag-handle"></div>
+        <div class="popup-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>Print Single-Page PDF</span>
+        </div>
+        <button class="popup-close-btn" data-close-popup>&times;</button>
+      </div>
+
+      <div class="popup-body">
+        <!-- PDF Options -->
+        <div class="pdf-options-grid">
+          <div class="form-group">
+            <label class="form-label" for="pdfTitleInput">Document Title</label>
+            <input type="text" id="pdfTitleInput" class="form-input" value="MEASUREMENT SPECIFICATION SHEET">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pdfClientInput">Client / Location</label>
+            <input type="text" id="pdfClientInput" class="form-input" placeholder="e.g. John Doe / Room 204">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
+            <input type="checkbox" id="pdfIncludeSketch" checked style="accent-color: var(--accent-primary);">
+            Include Diagram Sketch
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
+            <input type="checkbox" id="pdfIncludeSign" checked style="accent-color: var(--accent-primary);">
+            Include Signatures
+          </label>
+        </div>
+
+        <!-- Live Sheet Preview Box -->
+        <div class="form-label">Single-Page Sheet Preview</div>
+        <div class="pdf-preview-box" id="pdfLivePreview">
+          <!-- Dynamic live preview -->
+        </div>
+      </div>
+
+      <div class="popup-footer" style="flex-direction: column;">
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <!-- Print button triggers window.print() -->
+          <button type="button" class="btn btn-primary" id="btnExecutePrint" style="flex: 1.5;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>Print</span>
+          </button>
+
+          <!-- Direct Download PDF Binary button -->
+          <button type="button" class="btn btn-secondary" id="btnDownloadPdf" style="flex: 1;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download</span>
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <button type="button" class="btn btn-secondary" id="btnCopyTextSummary" style="flex: 1; font-size: 0.85rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy
+          </button>
+          <button type="button" class="btn btn-secondary" data-close-popup style="flex: 0.8;">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP 5: Starter Templates Modal -->
+  <div class="popup-overlay" id="popupTemplates">
+    <div class="popup-sheet">
+      <div class="popup-header">
+        <div class="popup-drag-handle"></div>
+        <div class="popup-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Measurement Templates</span>
+        </div>
+        <button class="popup-close-btn" data-close-popup>&times;</button>
+      </div>
+
+      <div class="popup-body">
+        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">
+          Select a template to populate ready-to-fill measurement fields:
+        </div>
+
+        <div class="template-grid">
+          <!-- Room Template -->
+          <div class="template-card" data-template="room">
+            <div class="template-info">
+              <span class="template-icon">🏠</span>
+              <div>
+                <div class="template-title">Room & Interior Architecture</div>
+                <div class="template-items">Length, Width, Height, Windows, Doors, Clearance</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <!-- Tailor Template -->
+          <div class="template-card" data-template="tailor">
+            <div class="template-info">
+              <span class="template-icon">✂️</span>
+              <div>
+                <div class="template-title">Tailoring & Apparel Measurements</div>
+                <div class="template-items">Chest, Waist, Hips, Shoulder, Sleeve, Inseam, Neck</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <!-- Carpentry Template -->
+          <div class="template-card" data-template="woodwork">
+            <div class="template-info">
+              <span class="template-icon">🪚</span>
+              <div>
+                <div class="template-title">Carpentry, Furniture & Woodworking</div>
+                <div class="template-items">Overall L/W/H, Board Thickness, Shelf Spacing, Kerf</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <!-- Packaging Template -->
+          <div class="template-card" data-template="box">
+            <div class="template-info">
+              <span class="template-icon">📦</span>
+              <div>
+                <div class="template-title">Box, Packaging & Shipping</div>
+                <div class="template-items">Outer L/W/H, Inner Clearance, Volume, Gross Weight</div>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+        </div>
+
+        <div style="margin-top: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); cursor: pointer;">
+            <input type="checkbox" id="checkAppendTemplate" checked style="accent-color: var(--accent-primary);">
+            Keep existing measurements (append rather than replace)
+          </label>
+        </div>
+      </div>
+
+      <div class="popup-footer">
+        <button type="button" class="btn btn-secondary btn-block" data-close-popup>Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP 6: Quick Converter & Calculator Modal -->
+  <div class="popup-overlay" id="popupConverter">
+    <div class="popup-sheet">
+      <div class="popup-header">
+        <div class="popup-drag-handle"></div>
+        <div class="popup-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+          </svg>
+          <span>Unit Converter & Area Calc</span>
+        </div>
+        <button class="popup-close-btn" data-close-popup>&times;</button>
+      </div>
+
+      <div class="popup-body">
+        <div class="converter-container">
+          <!-- Converter -->
+          <div class="form-label">Fast Unit Conversion</div>
+          <div class="converter-row">
+            <div>
+              <input type="number" id="convFromVal" class="form-input" value="10" placeholder="0">
+              <select id="convFromUnit" class="form-select" style="margin-top: 6px;">
+                <option value="in">Inches (in)</option>
+                <option value="cm" selected>Centimeters (cm)</option>
+                <option value="mm">Millimeters (mm)</option>
+                <option value="m">Meters (m)</option>
+                <option value="ft">Feet (ft)</option>
+              </select>
+            </div>
+
+            <button type="button" class="swap-units-btn" id="btnSwapUnits" title="Swap units">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="17 1 21 5 17 9"></polyline>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                <polyline points="7 23 3 19 7 15"></polyline>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+              </svg>
+            </button>
+
+            <div>
+              <input type="text" id="convToVal" class="form-input" readonly style="font-weight: 700; color: var(--accent-primary);">
+              <select id="convToUnit" class="form-select" style="margin-top: 6px;">
+                <option value="in" selected>Inches (in)</option>
+                <option value="cm">Centimeters (cm)</option>
+                <option value="mm">Millimeters (mm)</option>
+                <option value="m">Meters (m)</option>
+                <option value="ft">Feet (ft)</option>
+              </select>
+            </div>
+          </div>
+          <div id="fractionResult" style="font-size: 0.82rem; color: var(--text-secondary); text-align: center; margin-top: -4px;"></div>
+
+          <!-- Quick Area / Volume Calculator -->
+          <div class="form-label" style="margin-top: 10px;">Area & Volume Calculator</div>
+          <div class="calc-inputs-grid">
+            <input type="number" id="calcL" class="form-input" placeholder="L (Length)">
+            <input type="number" id="calcW" class="form-input" placeholder="W (Width)">
+            <input type="number" id="calcH" class="form-input" placeholder="H (Height)">
+          </div>
+          <div style="background: var(--bg-input); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-around; text-align: center;">
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-muted);">AREA (L × W)</div>
+              <div id="calcAreaVal" style="font-weight: 700; color: var(--accent-primary);">0.00</div>
+            </div>
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-muted);">PERIMETER 2(L+W)</div>
+              <div id="calcPerimVal" style="font-weight: 700; color: var(--text-primary);">0.00</div>
+            </div>
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-muted);">VOLUME (L×W×H)</div>
+              <div id="calcVolVal" style="font-weight: 700; color: var(--warning);">0.00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="popup-footer">
+        <button type="button" class="btn btn-secondary btn-block" data-close-popup>Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Hub -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- PRINT PAGE CONTAINER (Exclusively displayed on @media print for 1-page PDF print) -->
+  <div id="print-page-layout"></div>
+
+  <!-- Scripts -->
+  <script src="js/sketch-pad.js"></script>
+  <script src="js/pdf-generator.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.log('SW registration skipped or error:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
