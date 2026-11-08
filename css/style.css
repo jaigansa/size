@@ -2041,21 +2041,110 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Dimension Mode Tabs & Composite Inputs */
+/* ==========================================================================
+   DIMENSION SECTION CARD & COMPOSITE 1D / 2D / 3D INPUTS
+   ========================================================================== */
+.dim-section-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dim-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dim-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.dim-section-title svg {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+/* Integrated Unit Pill Selector (Always visible in all 1D / 2D / 3D modes) */
+.dim-unit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 3px 8px 3px 10px;
+  height: 32px;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dim-unit-pill:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+.dim-unit-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+  cursor: pointer;
+}
+
+.dim-unit-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  padding: 0 2px 0 0;
+  height: 100%;
+  margin: 0;
+}
+
+/* Dimension Mode Tabs (1D / 2D / 3D) */
 .dim-mode-tabs {
   display: flex;
-  background: var(--bg-input);
+  background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 3px;
   gap: 4px;
-  margin-bottom: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 .dim-mode-tab {
-  flex: 1;
-  padding: 6px 4px;
-  font-size: 0.76rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 6px;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-secondary);
   background: transparent;
@@ -2064,24 +2153,179 @@ body {
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dim-mode-tab:hover {
+  color: var(--text-primary);
+  background: rgba(148, 163, 184, 0.1);
 }
 
 .dim-mode-tab.active {
   background: var(--accent-primary);
   color: #0f172a;
   font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+.tab-txt-short {
+  display: none;
+}
+
+/* 1D Single Value Container */
+.dim-single-container {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dim-primary-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  letter-spacing: 0.02em;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dim-primary-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+/* 2D / 3D Composite Inputs Grid (Responsive Flexbox, Guaranteed Zero Screen Overflow) */
+.composite-inputs-grid {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dim-input-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.dim-col-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  margin: 0;
+  cursor: pointer;
+}
+
+.dim-input-field-wrap {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+}
+
+.dim-field-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  padding: 9px 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dim-field-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+.dim-sep {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  user-select: none;
+  height: 38px;
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Real-time Calculation Badge */
 .composite-calc-badge {
   margin-top: 6px;
-  padding: 6px 10px;
-  background: var(--bg-surface-elevated);
+  padding: 7px 12px;
+  background: var(--bg-surface);
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--accent-primary);
   font-weight: 600;
   text-align: center;
   border: 1px dashed var(--border-color);
+  width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
+}
+
+/* Compact screens (small mobile: max-width: 380px) */
+@media (max-width: 380px) {
+  .dim-section-card {
+    padding: 10px 8px;
+    gap: 8px;
+  }
+  .dim-mode-tab {
+    font-size: 0.72rem;
+    padding: 6px 2px;
+  }
+  .tab-txt-long {
+    display: none;
+  }
+  .tab-txt-short {
+    display: inline;
+  }
+  .dim-field-input {
+    font-size: 1rem;
+    padding: 8px 2px;
+  }
+  .dim-col-label {
+    font-size: 0.64rem;
+  }
+  .dim-sep {
+    font-size: 1rem;
+    width: 10px;
+  }
+  .quick-value-helpers button {
+    padding: 3px 6px;
+    font-size: 0.72rem;
+  }
 }
 
 /* Custom Saved Templates */
@@ -2417,6 +2661,31 @@ body {
 
   #popupMeasurement .popup-sheet {
     max-width: 620px;
+  }
+
+  .dim-section-card {
+    padding: 14px 18px;
+    gap: 12px;
+  }
+
+  .dim-mode-tab {
+    font-size: 0.85rem;
+    padding: 8px 10px;
+  }
+
+  .dim-field-input {
+    font-size: 1.25rem;
+    padding: 10px 8px;
+  }
+
+  .dim-primary-input {
+    font-size: 1.55rem;
+    padding: 12px 16px;
+  }
+
+  .composite-calc-badge {
+    font-size: 0.85rem;
+    padding: 8px 14px;
   }
 
   #popupProjects .popup-sheet {

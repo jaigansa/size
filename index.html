@@ -275,60 +275,88 @@
           </div>
         </div>
 
-        <!-- Dimension Mode Tabs: 1D / 2D / 3D -->
-        <div class="dim-mode-tabs" id="dimModeTabs">
-          <button type="button" class="dim-mode-tab active" data-dim-mode="1d">1D (Value)</button>
-          <button type="button" class="dim-mode-tab" data-dim-mode="2d">2D (L × W)</button>
-          <button type="button" class="dim-mode-tab" data-dim-mode="3d">3D (L × W × H)</button>
-        </div>
+        <!-- Dimension Mode & Value Card -->
+        <div class="dim-section-card">
+          <!-- Card Header: Title + Always-Accessible Unit Selector -->
+          <div class="dim-section-header">
+            <div class="dim-section-title" id="dimSectionTitle">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"></path>
+              </svg>
+              <span>Dimensions</span>
+            </div>
 
-        <!-- Composite 2D / 3D Inputs -->
-        <div id="compositeInputsBox" style="display: none; margin-bottom: 12px;">
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;" id="compositeInputsGrid">
-            <div>
-              <label class="form-label" style="font-size: 0.72rem;">Length (L)</label>
-              <input type="text" id="inputDimL" class="form-input" placeholder="0" inputmode="decimal">
-            </div>
-            <div>
-              <label class="form-label" style="font-size: 0.72rem;">Width (W)</label>
-              <input type="text" id="inputDimW" class="form-input" placeholder="0" inputmode="decimal">
-            </div>
-            <div id="colDimH">
-              <label class="form-label" style="font-size: 0.72rem;">Height (H)</label>
-              <input type="text" id="inputDimH" class="form-input" placeholder="0" inputmode="decimal">
+            <div class="dim-unit-pill">
+              <label for="selectItemUnit" class="dim-unit-tag">Unit</label>
+              <select id="selectItemUnit" class="form-select dim-unit-select" title="Measurement Unit">
+                <option value="cm">cm</option>
+                <option value="in">in (")</option>
+                <option value="mm">mm</option>
+                <option value="m">m</option>
+                <option value="ft">ft (')</option>
+                <option value="yd">yd</option>
+              </select>
             </div>
           </div>
-          <div id="compositeCalcBadge" class="composite-calc-badge" style="display: none;"></div>
-        </div>
 
-        <!-- Value & Unit Grid -->
-        <div class="measurement-input-grid" id="singleValueGrid">
-          <div class="form-group">
-            <label class="form-label" for="inputItemValue">Measurement Value</label>
+          <!-- Dimension Mode Tabs: 1D / 2D / 3D -->
+          <div class="dim-mode-tabs" id="dimModeTabs" role="tablist">
+            <button type="button" class="dim-mode-tab active" data-dim-mode="1d" role="tab" aria-selected="true">
+              <span class="tab-txt-long">1D Single</span>
+              <span class="tab-txt-short">1D</span>
+            </button>
+            <button type="button" class="dim-mode-tab" data-dim-mode="2d" role="tab" aria-selected="false">
+              <span class="tab-txt-long">2D (L × W)</span>
+              <span class="tab-txt-short">2D</span>
+            </button>
+            <button type="button" class="dim-mode-tab" data-dim-mode="3d" role="tab" aria-selected="false">
+              <span class="tab-txt-long">3D (L × W × H)</span>
+              <span class="tab-txt-short">3D</span>
+            </button>
+          </div>
+
+          <!-- 1D Single Value Field -->
+          <div class="dim-single-container" id="singleValueGrid">
             <div class="value-input-wrapper">
-              <input type="text" id="inputItemValue" class="form-input" placeholder="0.0" inputmode="decimal">
-            </div>
-            <!-- Quick numeric adjustments -->
-            <div class="quick-value-helpers">
-              <button type="button" class="helper-btn" data-inc="-1">-1</button>
-              <button type="button" class="helper-btn" data-inc="+1">+1</button>
-              <button type="button" class="helper-btn" data-inc="+0.5">+0.5</button>
-              <button type="button" class="helper-btn" data-frac=" 1/4">¼</button>
-              <button type="button" class="helper-btn" data-frac=" 1/2">½</button>
-              <button type="button" class="helper-btn" data-frac=" 3/4">¾</button>
+              <input type="text" id="inputItemValue" class="form-input dim-primary-input" placeholder="0.0" inputmode="decimal">
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="selectItemUnit">Unit</label>
-            <select id="selectItemUnit" class="form-select">
-              <option value="cm">cm</option>
-              <option value="in">in (")</option>
-              <option value="mm">mm</option>
-              <option value="m">m</option>
-              <option value="ft">ft (')</option>
-              <option value="yd">yd</option>
-            </select>
+          <!-- 2D / 3D Composite Inputs -->
+          <div id="compositeInputsBox" style="display: none;">
+            <div class="composite-inputs-grid" id="compositeInputsGrid">
+              <div class="dim-input-col">
+                <label class="dim-col-label" for="inputDimL">Length (L)</label>
+                <div class="dim-input-field-wrap">
+                  <input type="text" id="inputDimL" class="form-input dim-field-input" placeholder="0" inputmode="decimal">
+                </div>
+              </div>
+              <div class="dim-sep" id="sepDimW" aria-hidden="true">×</div>
+              <div class="dim-input-col">
+                <label class="dim-col-label" for="inputDimW">Width (W)</label>
+                <div class="dim-input-field-wrap">
+                  <input type="text" id="inputDimW" class="form-input dim-field-input" placeholder="0" inputmode="decimal">
+                </div>
+              </div>
+              <div class="dim-sep" id="sepDimH" aria-hidden="true" style="display: none;">×</div>
+              <div class="dim-input-col" id="colDimH" style="display: none;">
+                <label class="dim-col-label" for="inputDimH">Height (H)</label>
+                <div class="dim-input-field-wrap">
+                  <input type="text" id="inputDimH" class="form-input dim-field-input" placeholder="0" inputmode="decimal">
+                </div>
+              </div>
+            </div>
+            <div id="compositeCalcBadge" class="composite-calc-badge" style="display: none;"></div>
+          </div>
+
+          <!-- Quick numeric adjustments (shared, applies to active value input) -->
+          <div class="quick-value-helpers">
+            <button type="button" class="helper-btn" data-inc="-1">-1</button>
+            <button type="button" class="helper-btn" data-inc="+1">+1</button>
+            <button type="button" class="helper-btn" data-inc="+0.5">+0.5</button>
+            <button type="button" class="helper-btn" data-frac=" 1/4">¼</button>
+            <button type="button" class="helper-btn" data-frac=" 1/2">½</button>
+            <button type="button" class="helper-btn" data-frac=" 3/4">¾</button>
           </div>
         </div>
 

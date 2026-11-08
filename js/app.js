@@ -147,6 +147,9 @@
     inputDimW: document.getElementById('inputDimW'),
     inputDimH: document.getElementById('inputDimH'),
     colDimH: document.getElementById('colDimH'),
+    sepDimW: document.getElementById('sepDimW'),
+    sepDimH: document.getElementById('sepDimH'),
+    dimSectionTitle: document.getElementById('dimSectionTitle'),
     compositeCalcBadge: document.getElementById('compositeCalcBadge'),
     singleValueGrid: document.getElementById('singleValueGrid'),
     inputItemLabel: document.getElementById('inputItemLabel'),
@@ -800,30 +803,59 @@
   function setDimMode(mode) {
     activeDimMode = mode;
     document.querySelectorAll('.dim-mode-tab').forEach(tab => {
-      tab.classList.toggle('active', tab.dataset.dimMode === mode);
+      const isActive = tab.dataset.dimMode === mode;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
 
     if (mode === '1d') {
-      el.singleValueGrid.style.display = 'grid';
-      el.compositeInputsBox.style.display = 'none';
+      if (el.singleValueGrid) el.singleValueGrid.style.display = 'block';
+      if (el.compositeInputsBox) el.compositeInputsBox.style.display = 'none';
+      if (el.dimSectionTitle) {
+        const titleSpan = el.dimSectionTitle.querySelector('span');
+        if (titleSpan) titleSpan.textContent = 'Single Value';
+      }
+      if (!el.inputItemValue.value && el.inputDimL && el.inputDimL.value) {
+        el.inputItemValue.value = el.inputDimL.value;
+      }
     } else if (mode === '2d') {
-      el.singleValueGrid.style.display = 'none';
-      el.compositeInputsBox.style.display = 'block';
-      el.colDimH.style.display = 'none';
+      if (el.singleValueGrid) el.singleValueGrid.style.display = 'none';
+      if (el.compositeInputsBox) el.compositeInputsBox.style.display = 'block';
+      if (el.colDimH) el.colDimH.style.display = 'none';
+      if (el.sepDimH) el.sepDimH.style.display = 'none';
+      if (el.sepDimW) el.sepDimW.style.display = 'flex';
+      if (el.dimSectionTitle) {
+        const titleSpan = el.dimSectionTitle.querySelector('span');
+        if (titleSpan) titleSpan.textContent = '2D Dimensions';
+      }
+      if (!el.inputDimL.value && el.inputItemValue && el.inputItemValue.value) {
+        el.inputDimL.value = el.inputItemValue.value;
+      }
       updateCompositeCalc();
     } else if (mode === '3d') {
-      el.singleValueGrid.style.display = 'none';
-      el.compositeInputsBox.style.display = 'block';
-      el.colDimH.style.display = 'block';
+      if (el.singleValueGrid) el.singleValueGrid.style.display = 'none';
+      if (el.compositeInputsBox) el.compositeInputsBox.style.display = 'block';
+      if (el.colDimH) el.colDimH.style.display = 'flex';
+      if (el.sepDimH) el.sepDimH.style.display = 'flex';
+      if (el.sepDimW) el.sepDimW.style.display = 'flex';
+      if (el.dimSectionTitle) {
+        const titleSpan = el.dimSectionTitle.querySelector('span');
+        if (titleSpan) titleSpan.textContent = '3D Dimensions';
+      }
+      if (!el.inputDimL.value && el.inputItemValue && el.inputItemValue.value) {
+        el.inputDimL.value = el.inputItemValue.value;
+      }
       updateCompositeCalc();
     }
   }
 
   function updateCompositeCalc() {
-    const l = parseFloat(el.inputDimL.value) || 0;
-    const w = parseFloat(el.inputDimW.value) || 0;
-    const h = parseFloat(el.inputDimH.value) || 0;
-    const unit = el.selectItemUnit.value || 'cm';
+    const l = parseFractionOrDecimal(el.inputDimL ? el.inputDimL.value : '') || 0;
+    const w = parseFractionOrDecimal(el.inputDimW ? el.inputDimW.value : '') || 0;
+    const h = parseFractionOrDecimal(el.inputDimH ? el.inputDimH.value : '') || 0;
+    const unit = (el.selectItemUnit && el.selectItemUnit.value) ? el.selectItemUnit.value : 'cm';
+
+    if (!el.compositeCalcBadge) return;
 
     if (activeDimMode === '2d') {
       if (l > 0 && w > 0) {
@@ -839,9 +871,15 @@
         const area = (l * w).toFixed(2).replace(/\.00$/, '');
         el.compositeCalcBadge.textContent = `📦 Vol: ${vol} ${unit}³ • Area: ${area} ${unit}²`;
         el.compositeCalcBadge.style.display = 'block';
+      } else if (l > 0 && w > 0) {
+        const area = (l * w).toFixed(2).replace(/\.00$/, '');
+        el.compositeCalcBadge.textContent = `📐 Base Area: ${area} ${unit}²`;
+        el.compositeCalcBadge.style.display = 'block';
       } else {
         el.compositeCalcBadge.style.display = 'none';
       }
+    } else {
+      el.compositeCalcBadge.style.display = 'none';
     }
   }
 
@@ -997,6 +1035,7 @@
         el.inputDimH.value = '';
         el.inputItemNotes.value = '';
         el.checkVerified.checked = false;
+        if (el.compositeCalcBadge) el.compositeCalcBadge.style.display = 'none';
         el.inputItemLabel.focus();
       } else {
         closePopup(el.popupMeasurement);
@@ -1778,10 +1817,11 @@
       });
     }
 
-    // Composite inputs calculations
+    // Composite inputs calculations & unit change
     if (el.inputDimL) el.inputDimL.addEventListener('input', updateCompositeCalc);
     if (el.inputDimW) el.inputDimW.addEventListener('input', updateCompositeCalc);
     if (el.inputDimH) el.inputDimH.addEventListener('input', updateCompositeCalc);
+    if (el.selectItemUnit) el.selectItemUnit.addEventListener('change', updateCompositeCalc);
 
     // Save current sheet as custom template
     if (el.btnSaveSheetAsTemplate) {
@@ -1873,24 +1913,80 @@
       });
     });
 
-    // Quick numeric increment / fraction buttons
+    // Track active/focused input among 1D, L, W, H for helpers & keyboard
+    let lastActiveDimInput = el.inputItemValue;
+    [el.inputItemValue, el.inputDimL, el.inputDimW, el.inputDimH].forEach(inputEl => {
+      if (!inputEl) return;
+      inputEl.addEventListener('focus', () => {
+        lastActiveDimInput = inputEl;
+      });
+    });
+
+    // Quick numeric increment / fraction buttons (shared across 1D, 2D, 3D)
     document.querySelectorAll('.quick-value-helpers button').forEach(btn => {
       btn.addEventListener('click', () => {
         const inc = btn.dataset.inc;
         const frac = btn.dataset.frac;
-        const current = el.inputItemValue.value.trim();
+        const target = (activeDimMode === '1d') ? el.inputItemValue : (lastActiveDimInput || el.inputDimL);
+        if (!target) return;
+        const current = target.value.trim();
 
         if (frac) {
-          el.inputItemValue.value = current ? `${current.replace(/\s*[¼½¾\d\/]+$/, '')}${frac}`.trim() : frac.trim();
+          target.value = current ? `${current.replace(/\s*[¼½¾\d\/]+$/, '')}${frac}`.trim() : frac.trim();
         } else if (inc) {
           const delta = parseFloat(inc) || 0;
           const val = parseFractionOrDecimal(current);
           const base = isNaN(val) ? 0 : val;
           const next = Math.max(0, Math.round((base + delta) * 10) / 10);
-          el.inputItemValue.value = next;
+          target.value = next;
+        }
+
+        if (activeDimMode !== '1d') {
+          updateCompositeCalc();
         }
       });
     });
+
+    // Keyboard enter navigation for 1D, 2D, 3D inputs
+    if (el.inputItemValue) {
+      el.inputItemValue.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          el.btnSaveMeasurement.click();
+        }
+      });
+    }
+
+    if (el.inputDimL) {
+      el.inputDimL.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (el.inputDimW) el.inputDimW.focus();
+        }
+      });
+    }
+
+    if (el.inputDimW) {
+      el.inputDimW.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeDimMode === '3d' && el.inputDimH) {
+            el.inputDimH.focus();
+          } else {
+            el.btnSaveMeasurement.click();
+          }
+        }
+      });
+    }
+
+    if (el.inputDimH) {
+      el.inputDimH.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          el.btnSaveMeasurement.click();
+        }
+      });
+    }
 
     // Projects modal action
     el.btnCreateProject.addEventListener('click', () => {
