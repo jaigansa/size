@@ -2235,6 +2235,325 @@ body {
 }
 
 /* ==========================================================================
+   RESPONSIVE DESIGN: TABLET VERTICAL (Portrait 768px+) & HORIZONTAL (1024px+)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   TABLET VERTICAL (Portrait: 768px - 1023px)
+   -------------------------------------------------------------------------- */
+@media (min-width: 768px) {
+  body {
+    background-color: var(--bg-primary);
+    padding: 0;
+  }
+
+  /* Expand shell from narrow mobile column to full tablet portrait width */
+  .app-shell {
+    max-width: 768px;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.08);
+    padding-bottom: calc(96px + var(--safe-bottom));
+  }
+
+  .app-header {
+    padding: 16px 24px 12px 24px;
+  }
+
+  .header-brand {
+    font-size: 1.25rem;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .project-selector-bar {
+    margin: 12px 24px 0 24px;
+    padding: 8px 14px;
+  }
+
+  .project-title {
+    font-size: 0.95rem;
+  }
+
+  /* Summary Cards */
+  .summary-bar {
+    padding: 14px 24px 8px 24px;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .stat-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .stat-label {
+    font-size: 0.68rem;
+  }
+
+  .stat-value {
+    font-size: 1.38rem;
+    margin-top: 6px;
+    margin-bottom: 5px;
+  }
+
+  .stat-sub {
+    font-size: 0.70rem;
+    padding: 2px 8px;
+  }
+
+  /* Search & Category Filter Bar */
+  .search-filter-bar {
+    padding: 12px 24px 14px 24px;
+  }
+
+  .search-box-unified {
+    height: 48px;
+  }
+
+  .search-input {
+    font-size: 0.94rem;
+  }
+
+  .search-cat-label {
+    max-width: 140px;
+    font-size: 0.88rem;
+  }
+
+  /* Measurement List */
+  .measurement-list-container {
+    padding: 0 24px 24px 24px;
+  }
+
+  .measurement-card {
+    padding: 14px 18px;
+  }
+
+  .card-label {
+    font-size: 1.05rem;
+  }
+
+  .card-value {
+    font-size: 1.4rem;
+  }
+
+  /* Bottom Actions Bar */
+  .bottom-actions-bar {
+    max-width: 768px;
+    padding: 14px 24px calc(14px + var(--safe-bottom)) 24px;
+    gap: 14px;
+  }
+
+  .btn-add-primary {
+    height: 52px;
+    font-size: 1rem;
+  }
+
+  .btn-quick-pdf {
+    height: 52px;
+    font-size: 0.94rem;
+  }
+
+  /* Modal Popups transformed from bottom sheets to centered dialogs */
+  .popup-overlay {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .popup-sheet {
+    border-radius: var(--radius-lg);
+    max-width: 600px;
+    max-height: 86vh;
+    transform: scale(0.96) translateY(12px);
+    opacity: 0;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    padding-bottom: 0;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+  }
+
+  .popup-overlay.active .popup-sheet {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+
+  .popup-drag-handle {
+    display: none;
+  }
+
+  .popup-header {
+    padding: 18px 24px 14px 24px;
+  }
+
+  .popup-body {
+    padding: 20px 24px;
+  }
+
+  .popup-footer {
+    padding: 14px 24px 18px 24px;
+  }
+
+  /* Specific modal sizes */
+  #popupSketch .popup-sheet {
+    max-width: 740px;
+  }
+
+  #sketchCanvas {
+    height: 340px;
+  }
+
+  #popupPdf .popup-sheet {
+    max-width: 720px;
+  }
+
+  .pdf-preview-box {
+    max-height: 480px;
+  }
+
+  #popupMeasurement .popup-sheet {
+    max-width: 620px;
+  }
+
+  #popupProjects .popup-sheet {
+    max-width: 620px;
+  }
+
+  .template-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .theme-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TABLET HORIZONTAL (Landscape & Desktop: 1024px+)
+   -------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  /* Expand shell to comfortable widescreen dashboard */
+  .app-shell {
+    max-width: 1060px;
+    box-shadow: 0 0 80px rgba(0, 0, 0, 0.1);
+    padding-bottom: calc(104px + var(--safe-bottom));
+  }
+
+  .app-header {
+    padding: 18px 36px 14px 36px;
+  }
+
+  .project-selector-bar {
+    margin: 14px 36px 0 36px;
+    padding: 10px 18px;
+  }
+
+  .summary-bar {
+    padding: 16px 36px 10px 36px;
+    gap: 16px;
+  }
+
+  .stat-card {
+    padding: 14px 18px;
+  }
+
+  .stat-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .stat-value {
+    font-size: 1.55rem;
+  }
+
+  .search-filter-bar {
+    padding: 14px 36px 18px 36px;
+  }
+
+  .search-cat-label {
+    max-width: 180px;
+    font-size: 0.90rem;
+  }
+
+  .measurement-list-container {
+    padding: 0 36px 30px 36px;
+  }
+
+  /* 2-column measurement cards grid on tablet landscape */
+  .measurement-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .measurement-list .empty-state {
+    grid-column: 1 / -1;
+  }
+
+  .bottom-actions-bar {
+    max-width: 1060px;
+    padding: 16px 36px calc(16px + var(--safe-bottom)) 36px;
+    gap: 18px;
+  }
+
+  .btn-add-primary {
+    height: 54px;
+    font-size: 1.05rem;
+  }
+
+  .btn-quick-pdf {
+    height: 54px;
+    font-size: 0.98rem;
+  }
+
+  /* Widescreen modals */
+  #popupSketch .popup-sheet {
+    max-width: 860px;
+  }
+
+  #sketchCanvas {
+    height: 400px;
+  }
+
+  #popupPdf .popup-sheet {
+    max-width: 820px;
+  }
+
+  .pdf-preview-box {
+    max-height: 540px;
+  }
+
+  #popupMeasurement .popup-sheet {
+    max-width: 660px;
+  }
+
+  #popupProjects .popup-sheet {
+    max-width: 660px;
+  }
+}
+
+/* Tablet Landscape Low-Height Viewports */
+@media (min-width: 768px) and (max-height: 650px) {
+  .popup-sheet {
+    max-height: 94vh;
+  }
+  #sketchCanvas {
+    height: 260px;
+  }
+  .pdf-preview-box {
+    max-height: 380px;
+  }
+}
+
+/* ==========================================================================
    PRINT STYLESHEET (Single Screen to Single Page PDF)
    ========================================================================== */
 #print-page-layout {

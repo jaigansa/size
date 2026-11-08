@@ -21,6 +21,21 @@ class SketchPad {
 
     this.initCanvasSize();
     this.bindEvents();
+
+    // Re-adjust canvas seamlessly on tablet orientation change or window resize
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (this.canvas && this.canvas.offsetParent !== null) {
+          const curData = this.toDataURL();
+          this.initCanvasSize();
+          if (curData) {
+            this.loadFromDataURL(curData);
+          }
+        }
+      }, 100);
+    });
   }
 
   initCanvasSize() {
@@ -28,7 +43,14 @@ class SketchPad {
     const rect = parent ? parent.getBoundingClientRect() : null;
     const dpr = window.devicePixelRatio || 1;
     const width = (rect && rect.width > 0) ? rect.width : (parent && parent.clientWidth > 0 ? parent.clientWidth : 320);
-    const height = 240;
+    
+    // Responsive canvas height for mobile phone, tablet portrait, and tablet landscape
+    let height = 240;
+    if (window.innerWidth >= 1024) {
+      height = window.innerHeight < 650 ? 260 : 400;
+    } else if (window.innerWidth >= 768) {
+      height = window.innerHeight < 650 ? 260 : 340;
+    }
 
     this.canvas.width = Math.floor(width * dpr);
     this.canvas.height = Math.floor(height * dpr);
