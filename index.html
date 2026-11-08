@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#ffffff" id="metaThemeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Mobile app for measurement notes and single-page PDF printing. Single screen, zero tabs, pure popups.">
   <title>SizeNotes - Measurement Notes & PDF Print</title>
   <link rel="manifest" href="manifest.json">
@@ -33,13 +33,15 @@
         </div>
 
         <div class="header-actions">
-          <!-- Sketch Doodle Popup Trigger -->
-          <button class="icon-btn" id="btnOpenSketch" title="Draw Sketch / Diagram">
+          <!-- Theme Color Switcher Trigger -->
+          <button class="icon-btn" id="btnOpenTheme" title="Change Color Theme">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 20h9"></path>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+              <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+              <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+              <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"></path>
             </svg>
-            <span class="badge-dot" id="sketchBadgeDot" style="display: none;"></span>
           </button>
 
           <!-- Templates Popup Trigger -->
@@ -64,15 +66,6 @@
               <path d="M8 18h.01"></path>
             </svg>
           </button>
-
-          <!-- Print / PDF Popup Trigger -->
-          <button class="icon-btn primary" id="btnOpenPdf" title="Print PDF Page">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9"></polyline>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-              <rect x="6" y="14" width="12" height="8"></rect>
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -94,28 +87,73 @@
     </header>
 
     <!-- Project Summary Card -->
-    <section class="summary-bar">
+    <section class="summary-bar" aria-label="Project Summary">
       <div class="stat-card">
-        <span class="stat-label">Items</span>
+        <div class="stat-header">
+          <span class="stat-icon stat-icon-items" aria-hidden="true">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="7" x="3" y="3" rx="1.5"></rect>
+              <rect width="7" height="7" x="14" y="3" rx="1.5"></rect>
+              <rect width="7" height="7" x="14" y="14" rx="1.5"></rect>
+              <rect width="7" height="7" x="3" y="14" rx="1.5"></rect>
+            </svg>
+          </span>
+          <span class="stat-label">Items</span>
+        </div>
         <span class="stat-value" id="statItemCount">0</span>
         <span class="stat-sub" id="statVerifiedSub">0 verified</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Main Unit</span>
+        <div class="stat-header">
+          <span class="stat-icon stat-icon-unit" aria-hidden="true">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.3 8.7 8.7 21.3c-.4.4-1 .4-1.4 0l-4.6-4.6c-.4-.4-.4-1 0-1.4L15.3 2.7c.4-.4 1-.4 1.4 0l4.6 4.6c.4.4.4 1 0 1.4z"></path>
+              <path d="m14.5 3.5 2 2"></path>
+              <path d="m11.5 6.5 2 2"></path>
+              <path d="m8.5 9.5 2 2"></path>
+              <path d="m5.5 12.5 2 2"></path>
+            </svg>
+          </span>
+          <span class="stat-label">Main Unit</span>
+        </div>
         <span class="stat-value" id="statMainUnit">cm</span>
         <span class="stat-sub" id="statUnitCount">1 unit type</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Total Sum</span>
+        <div class="stat-header">
+          <span class="stat-icon stat-icon-sum" aria-hidden="true">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 7V4H6l6 8-6 8h12v-3"></path>
+            </svg>
+          </span>
+          <span class="stat-label">Total Sum</span>
+        </div>
         <span class="stat-value" id="statTotalSum">0</span>
         <span class="stat-sub" id="statGroupCount">1 group</span>
       </div>
     </section>
 
-    <!-- Unified Search & Category Filter Bar (Category Dropdown integrated inside Search Bar) -->
+    <!-- Unified Search & Category Filter Bar (Category Dropdown integrated on the right side) -->
     <section class="search-filter-bar">
       <div class="search-box-unified" id="searchBoxUnified">
-        <!-- Integrated Category Dropdown Button -->
+        <!-- Search Input (Left Side) -->
+        <div class="search-input-wrapper">
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search measurements or notes..." autocomplete="off">
+          <button id="btnClearSearch" class="clear-search-btn" title="Clear search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="search-divider"></div>
+
+        <!-- Integrated Category Dropdown Button (Right Side) -->
         <div class="search-cat-dropdown" id="searchCatDropdown">
           <button type="button" class="search-cat-btn" id="searchCatBtn" aria-haspopup="true" aria-expanded="false" title="Filter by Category">
             <span class="search-cat-icon">🏷️</span>
@@ -129,23 +167,6 @@
           <div class="search-cat-menu" id="searchCatMenu" role="menu">
             <!-- Dynamically populated with category options + counts -->
           </div>
-        </div>
-
-        <div class="search-divider"></div>
-
-        <!-- Search Input -->
-        <div class="search-input-wrapper">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="searchInput" class="search-input" placeholder="Search measurements or notes..." autocomplete="off">
-          <button id="btnClearSearch" class="clear-search-btn" title="Clear search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
         </div>
       </div>
     </section>
@@ -211,6 +232,7 @@
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
         </svg>
         <span>Sketch</span>
+        <span class="badge-dot" id="sketchBadgeDot" style="display: none;"></span>
       </button>
     </nav>
   </main>
@@ -253,8 +275,34 @@
           </div>
         </div>
 
+        <!-- Dimension Mode Tabs: 1D / 2D / 3D -->
+        <div class="dim-mode-tabs" id="dimModeTabs">
+          <button type="button" class="dim-mode-tab active" data-dim-mode="1d">1D (Value)</button>
+          <button type="button" class="dim-mode-tab" data-dim-mode="2d">2D (L × W)</button>
+          <button type="button" class="dim-mode-tab" data-dim-mode="3d">3D (L × W × H)</button>
+        </div>
+
+        <!-- Composite 2D / 3D Inputs -->
+        <div id="compositeInputsBox" style="display: none; margin-bottom: 12px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;" id="compositeInputsGrid">
+            <div>
+              <label class="form-label" style="font-size: 0.72rem;">Length (L)</label>
+              <input type="text" id="inputDimL" class="form-input" placeholder="0" inputmode="decimal">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem;">Width (W)</label>
+              <input type="text" id="inputDimW" class="form-input" placeholder="0" inputmode="decimal">
+            </div>
+            <div id="colDimH">
+              <label class="form-label" style="font-size: 0.72rem;">Height (H)</label>
+              <input type="text" id="inputDimH" class="form-input" placeholder="0" inputmode="decimal">
+            </div>
+          </div>
+          <div id="compositeCalcBadge" class="composite-calc-badge" style="display: none;"></div>
+        </div>
+
         <!-- Value & Unit Grid -->
-        <div class="measurement-input-grid">
+        <div class="measurement-input-grid" id="singleValueGrid">
           <div class="form-group">
             <label class="form-label" for="inputItemValue">Measurement Value</label>
             <div class="value-input-wrapper">
@@ -337,39 +385,60 @@
 
       <div class="popup-body">
         <!-- New Project Inline Form -->
-        <div style="background: var(--bg-input); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
-          <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase;">+ Create New Sheet</span>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="inputNewProjectName" class="form-input" placeholder="Project name (e.g. Master Bedroom, Tailor: John)..." style="flex: 1;">
-            <button class="btn btn-primary" id="btnCreateProject" style="height: auto; padding: 0 14px;">Create</button>
+        <div class="create-sheet-box">
+          <div class="create-sheet-header">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Create New Sheet</span>
+          </div>
+          <div class="create-sheet-input-row">
+            <input type="text" id="inputNewProjectName" class="form-input" placeholder="Sheet title (e.g. Master Bedroom, Cut List)..." autocomplete="off" style="flex: 1;">
+            <button type="button" class="btn btn-primary" id="btnCreateProject" style="height: auto; padding: 0 16px; font-weight: 600;">Create</button>
           </div>
         </div>
 
         <!-- Saved Projects List -->
-        <div class="form-label">Existing Sheets</div>
+        <div class="existing-sheets-header">
+          <div class="existing-sheets-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Existing Sheets</span>
+            <span class="sheets-count-badge" id="sheetsCountBadge">1</span>
+          </div>
+          <span class="existing-sheets-hint">Tap to switch</span>
+        </div>
+
         <div class="project-list" id="projectListContainer">
           <!-- Rendered dynamically -->
         </div>
 
         <!-- Backup / Data Tools -->
-        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); display: flex; gap: 8px;">
-          <button class="btn btn-secondary btn-block" id="btnExportData" style="font-size: 0.8rem;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Export
-          </button>
-          <label class="btn btn-secondary btn-block" style="font-size: 0.8rem; cursor: pointer; text-align: center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            Import
-            <input type="file" id="importFileInput" accept=".json" style="display: none;">
-          </label>
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+          <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;">
+            Backup & Data Transfer
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary btn-block" id="btnExportData" style="font-size: 0.8rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export JSON</span>
+            </button>
+            <label class="btn btn-secondary btn-block" style="font-size: 0.8rem; cursor: pointer; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Import JSON</span>
+              <input type="file" id="importFileInput" accept=".json" style="display: none;">
+            </label>
+          </div>
         </div>
       </div>
 
@@ -422,6 +491,13 @@
                   <rect x="3" y="3" width="18" height="18" rx="2"></rect>
                 </svg>
               </button>
+              <button class="tool-btn" id="toolText" title="Text / Dimension Stamp">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                  <line x1="9" y1="20" x2="15" y2="20"></line>
+                  <line x1="12" y1="4" x2="12" y2="20"></line>
+                </svg>
+              </button>
               <button class="tool-btn" id="toolEraser" title="Eraser">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="7 21 21 21"></polyline>
@@ -438,8 +514,15 @@
               <span class="color-dot" data-color="#10b981" style="background: #10b981;"></span>
             </div>
 
-            <!-- History Actions -->
+            <!-- Photo & History Actions -->
             <div style="display: flex; gap: 4px;">
+              <button class="tool-btn" id="btnSketchPhoto" title="Add / Take Photo Background">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+              </button>
+              <input type="file" id="sketchPhotoInput" accept="image/*" capture="environment" style="display: none;">
               <button class="tool-btn" id="toolUndo" title="Undo">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="1 4 1 10 7 10"></polyline>
@@ -514,8 +597,29 @@
           </label>
         </div>
 
+        <!-- Contractor / Company Header Branding (Optional) -->
+        <div class="branding-config-box" style="margin-top: 10px; padding: 10px; background: var(--bg-input); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.76rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; margin-bottom: 6px;">
+            🏢 Contractor / Company Header (Optional)
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+            <input type="text" id="pdfCompanyInput" class="form-input" placeholder="Company / Contractor Name" style="flex: 1.2; font-size: 0.82rem;">
+            <input type="text" id="pdfContactInput" class="form-input" placeholder="Phone / Email / Lic #" style="flex: 1; font-size: 0.82rem;">
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label class="btn btn-secondary" style="font-size: 0.74rem; padding: 4px 10px; cursor: pointer;">
+              📷 Upload Logo
+              <input type="file" id="pdfLogoInput" accept="image/*" style="display: none;">
+            </label>
+            <div id="pdfLogoPreviewContainer" style="display: none; align-items: center; gap: 6px;">
+              <img id="pdfLogoPreview" style="max-height: 24px; max-width: 60px; object-fit: contain; border-radius: 4px; background: #fff; padding: 2px;" alt="Logo">
+              <button type="button" id="btnClearLogo" style="background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; padding: 2px 4px;">Remove</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Live Sheet Preview Box -->
-        <div class="form-label">Single-Page Sheet Preview</div>
+        <div class="form-label" style="margin-top: 12px;">Single-Page Sheet Preview</div>
         <div class="pdf-preview-box" id="pdfLivePreview">
           <!-- Dynamic live preview -->
         </div>
@@ -523,9 +627,21 @@
 
       <div class="popup-footer" style="flex-direction: column;">
         <div style="display: flex; gap: 8px; width: 100%;">
+          <!-- Native Share Sheet button -->
+          <button type="button" class="btn btn-primary" id="btnShareSheet" style="flex: 1.2;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            <span>Share</span>
+          </button>
+
           <!-- Print button triggers window.print() -->
-          <button type="button" class="btn btn-primary" id="btnExecutePrint" style="flex: 1.5;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="button" class="btn btn-secondary" id="btnExecutePrint" style="flex: 1;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 6 2 18 2 18 9"></polyline>
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
               <rect x="6" y="14" width="12" height="8"></rect>
@@ -535,22 +651,33 @@
 
           <!-- Direct Download PDF Binary button -->
           <button type="button" class="btn btn-secondary" id="btnDownloadPdf" style="flex: 1;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <span>Download</span>
+            <span>PDF</span>
+          </button>
+
+          <!-- CSV Export button -->
+          <button type="button" class="btn btn-secondary" id="btnDownloadCsv" style="flex: 1;" title="Export as CSV / Excel spreadsheet">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="8" y1="13" x2="16" y2="13"></line>
+              <line x1="8" y1="17" x2="16" y2="17"></line>
+            </svg>
+            <span>CSV</span>
           </button>
         </div>
 
         <div style="display: flex; gap: 8px; width: 100%;">
-          <button type="button" class="btn btn-secondary" id="btnCopyTextSummary" style="flex: 1; font-size: 0.85rem;">
+          <button type="button" class="btn btn-secondary" id="btnCopyTextSummary" style="flex: 1; font-size: 0.82rem;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
-            Copy
+            Copy Text
           </button>
           <button type="button" class="btn btn-secondary" data-close-popup style="flex: 0.8;">Done</button>
         </div>
@@ -573,8 +700,19 @@
       </div>
 
       <div class="popup-body">
-        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">
-          Select a template to populate ready-to-fill measurement fields:
+        <!-- Custom Saved Templates -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 0.78rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase;">Custom Saved Templates</span>
+          <button type="button" class="btn btn-secondary" id="btnSaveSheetAsTemplate" style="padding: 4px 10px; font-size: 0.75rem;">
+            + Save Current Sheet
+          </button>
+        </div>
+        <div class="custom-templates-list" id="customTemplatesContainer" style="margin-bottom: 14px;">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+          Starter Presets
         </div>
 
         <div class="template-grid">
@@ -713,6 +851,141 @@
               <div style="font-size: 0.7rem; color: var(--text-muted);">VOLUME (L×W×H)</div>
               <div id="calcVolVal" style="font-weight: 700; color: var(--warning);">0.00</div>
             </div>
+          </div>
+
+          <!-- Batch Convert Entire Sheet -->
+          <div class="batch-convert-box" style="margin-top: 14px; padding: 12px; background: var(--bg-input); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; margin-bottom: 4px;">
+              🔄 Convert Entire Project Sheet
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
+              Batch convert all item values in this project sheet to a single unit:
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <select id="selectBatchTargetUnit" class="form-select" style="flex: 1;">
+                <option value="cm">Centimeters (cm)</option>
+                <option value="in">Inches (in)</option>
+                <option value="mm">Millimeters (mm)</option>
+                <option value="m">Meters (m)</option>
+                <option value="ft">Feet (ft)</option>
+                <option value="yd">Yards (yd)</option>
+              </select>
+              <button type="button" class="btn btn-primary" id="btnBatchConvertUnits" style="padding: 0 14px; white-space: nowrap; font-size: 0.82rem;">
+                Convert All
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="popup-footer">
+        <button type="button" class="btn btn-secondary btn-block" data-close-popup>Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP 7: Color Theme Modal -->
+  <div class="popup-overlay" id="popupTheme">
+    <div class="popup-sheet">
+      <div class="popup-header">
+        <div class="popup-drag-handle"></div>
+        <div class="popup-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"></path>
+          </svg>
+          <span>Color Theme</span>
+        </div>
+        <button class="popup-close-btn" data-close-popup>&times;</button>
+      </div>
+
+      <div class="popup-body">
+        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+          Choose an optimized visual color theme for your environment:
+        </div>
+
+        <div class="theme-options-grid">
+          <!-- Clean Light White (Default) -->
+          <div class="theme-card active" data-theme="light">
+            <div class="theme-card-left">
+              <div class="theme-preview-dots">
+                <span style="background: #0284c7;"></span>
+                <span style="background: #ffffff; border: 1px solid #cbd5e1;"></span>
+                <span style="background: #0f172a;"></span>
+              </div>
+              <div class="theme-meta">
+                <div class="theme-name">Clean White</div>
+                <div class="theme-desc">Crisp Elegant Light White Theme</div>
+              </div>
+            </div>
+            <span class="theme-check-icon">✓</span>
+          </div>
+
+          <!-- Obsidian Azure -->
+          <div class="theme-card" data-theme="obsidian">
+            <div class="theme-card-left">
+              <div class="theme-preview-dots">
+                <span style="background: #00d2ff;"></span>
+                <span style="background: #070a10; border: 1px solid #334155;"></span>
+                <span style="background: #f8fafc;"></span>
+              </div>
+              <div class="theme-meta">
+                <div class="theme-name">Obsidian Azure</div>
+                <div class="theme-desc">Pro OLED Dark & Vibrant Cyan</div>
+              </div>
+            </div>
+            <span class="theme-check-icon">✓</span>
+          </div>
+
+          <!-- Blueprint Architect -->
+          <div class="theme-card" data-theme="blueprint">
+            <div class="theme-card-left">
+              <div class="theme-preview-dots">
+                <span style="background: #38bdf8;"></span>
+                <span style="background: #0a1324; border: 1px solid #1e3a63;"></span>
+                <span style="background: #f0f7ff;"></span>
+              </div>
+              <div class="theme-meta">
+                <div class="theme-name">Blueprint Tech</div>
+                <div class="theme-desc">Architect Deep Navy & Technical Blue</div>
+              </div>
+            </div>
+            <span class="theme-check-icon">✓</span>
+          </div>
+
+          <!-- Workshop Amber -->
+          <div class="theme-card" data-theme="workshop">
+            <div class="theme-card-left">
+              <div class="theme-preview-dots">
+                <span style="background: #f59e0b;"></span>
+                <span style="background: #121316; border: 1px solid #31333d;"></span>
+                <span style="background: #fafaf9;"></span>
+              </div>
+              <div class="theme-meta">
+                <div class="theme-name">Workshop Amber</div>
+                <div class="theme-desc">Industrial Dark & Carpenter Gold</div>
+              </div>
+            </div>
+            <span class="theme-check-icon">✓</span>
+          </div>
+
+          <!-- Emerald Craft -->
+          <div class="theme-card" data-theme="emerald">
+            <div class="theme-card-left">
+              <div class="theme-preview-dots">
+                <span style="background: #10b981;"></span>
+                <span style="background: #071510; border: 1px solid #1f4b3c;"></span>
+                <span style="background: #f2fbf7;"></span>
+              </div>
+              <div class="theme-meta">
+                <div class="theme-name">Emerald Craft</div>
+                <div class="theme-desc">Deep Forest & Mint Precision</div>
+              </div>
+            </div>
+            <span class="theme-check-icon">✓</span>
           </div>
         </div>
       </div>

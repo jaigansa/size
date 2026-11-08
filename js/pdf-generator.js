@@ -1,8 +1,9 @@
 /**
- * SizeNotes - PDF Generator Module
+ * SizeNotes - PDF & CSV Generator Module
  * Provides:
  * 1. Print page DOM generation for native high-res window.print() (Save as PDF)
- * 2. Standalone pure JS PDF 1.4 binary generator for direct .pdf file download
+ * 2. Standalone pure JS PDF 1.4 binary generator for direct .pdf file download & sharing
+ * 3. Excel-compatible CSV export for cut lists and CAD/spreadsheet pipelines
  */
 
 const PDFGenerator = {
@@ -16,7 +17,10 @@ const PDFGenerator = {
       date: project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : new Date().toLocaleDateString(),
       includeSketch: !!sketchDataUrl,
       includeSignature: true,
-      compact: false
+      compact: false,
+      companyName: '',
+      companyContact: '',
+      companyLogo: null
     };
     const opts = { ...defaultOptions, ...options };
 
@@ -51,77 +55,91 @@ const PDFGenerator = {
 
     const sketchHtml = (opts.includeSketch && sketchDataUrl) ? `
       <div class="print-sketch-column">
-        <div class="print-sketch-title">Diagram / Sketch Note</div>
+        <div class="print-sketch-title">Diagram / Visual Note</div>
         <img class="print-sketch-img" src="${sketchDataUrl}" alt="Measurement Diagram" />
       </div>
     ` : '';
 
-    const html = `
-      <div class="print-page-header">
+    const companyHeaderHtml = (opts.companyName || opts.companyLogo) ? `
+      <div class="print-company-bar">
+        ${opts.companyLogo ? `<img class="print-company-logo" src="${opts.companyLogo}" alt="Logo" />` : ''}
         <div>
-          <div class="print-main-title">${this.escapeHtml(opts.title)}</div>
-          <div class="print-sub-title">Project: <strong>${this.escapeHtml(project.title)}</strong> &bull; Ref: ${this.escapeHtml(project.id.slice(-6).toUpperCase())}</div>
-        </div>
-        <div style="text-align: right;">
-          <div style="font-size: 8pt; font-weight: 700; color: #0284c7;">SIZENOTE REPORT</div>
-          <div style="font-size: 7.5pt; color: #64748b;">Generated: ${opts.date}</div>
+          ${opts.companyName ? `<div class="print-company-name">${this.escapeHtml(opts.companyName)}</div>` : ''}
+          ${opts.companyContact ? `<div class="print-company-contact">${this.escapeHtml(opts.companyContact)}</div>` : ''}
         </div>
       </div>
+    ` : '';
 
-      <div class="print-meta-grid">
-        <div class="print-meta-item">
-          <div class="print-meta-label">Client / Location</div>
-          <div class="print-meta-val">${this.escapeHtml(opts.client || 'N/A')}</div>
-        </div>
-        <div class="print-meta-item">
-          <div class="print-meta-label">Total Items</div>
-          <div class="print-meta-val">${totalItems} Recorded</div>
-        </div>
-        <div class="print-meta-item">
-          <div class="print-meta-label">Verification</div>
-          <div class="print-meta-val">${verifiedCount} / ${totalItems} Checked</div>
-        </div>
-        <div class="print-meta-item">
-          <div class="print-meta-label">Categories</div>
-          <div class="print-meta-val">${categories.length} Groups</div>
-        </div>
-      </div>
+    const html = `
+      <div class="print-sheet-frame">
+        ${companyHeaderHtml}
 
-      <div class="print-content-columns">
-        <div class="print-table-column">
-          <table class="print-table">
-            <thead>
-              <tr>
-                <th style="width: 32px; text-align: center;">#</th>
-                <th>Item / Dimension</th>
-                <th style="width: 80px; text-align: right;">Value</th>
-                <th style="width: 45px; text-align: center;">Unit</th>
-                <th style="width: 80px;">Category</th>
-                <th>Notes / Specs</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-          </table>
+        <div class="print-page-header">
+          <div>
+            <div class="print-main-title">${this.escapeHtml(opts.title)}</div>
+            <div class="print-sub-title">Project: <strong>${this.escapeHtml(project.title)}</strong> &bull; Ref: ${this.escapeHtml(project.id.slice(-6).toUpperCase())}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 8pt; font-weight: 700; color: #0284c7;">SIZENOTE REPORT</div>
+            <div style="font-size: 7.5pt; color: #64748b;">Generated: ${opts.date}</div>
+          </div>
         </div>
-        ${sketchHtml}
-      </div>
 
-      <div class="print-summary-box">
-        <div class="print-totals">
-          <div><strong>Notes:</strong> All measurements subject to on-site tolerances. Confirm critical clear-spaces prior to cutting.</div>
-          <div style="color: #64748b; font-size: 7pt; margin-top: 2px;">Units referenced: ${[...new Set(items.map(i => i.unit))].join(', ') || 'N/A'}</div>
+        <div class="print-meta-grid">
+          <div class="print-meta-item">
+            <div class="print-meta-label">Client / Location</div>
+            <div class="print-meta-val">${this.escapeHtml(opts.client || 'N/A')}</div>
+          </div>
+          <div class="print-meta-item">
+            <div class="print-meta-label">Total Items</div>
+            <div class="print-meta-val">${totalItems} Recorded</div>
+          </div>
+          <div class="print-meta-item">
+            <div class="print-meta-label">Verification</div>
+            <div class="print-meta-val">${verifiedCount} / ${totalItems} Checked</div>
+          </div>
+          <div class="print-meta-item">
+            <div class="print-meta-label">Categories</div>
+            <div class="print-meta-val">${categories.length} Groups</div>
+          </div>
         </div>
-        ${opts.includeSignature ? `
-        <div class="print-signature-block">
-          <div class="print-sign-line">Measured By / Date</div>
-          <div class="print-sign-line">Approved / Customer</div>
-        </div>` : ''}
-      </div>
 
-      <div class="print-footer-tag">
-        Document ID: SZN-${project.id} &bull; Single-Screen Measurement Note System
+        <div class="print-content-columns">
+          <div class="print-table-column">
+            <table class="print-table">
+              <thead>
+                <tr>
+                  <th style="width: 32px; text-align: center;">#</th>
+                  <th>Item / Dimension</th>
+                  <th style="width: 80px; text-align: right;">Value</th>
+                  <th style="width: 45px; text-align: center;">Unit</th>
+                  <th style="width: 80px;">Category</th>
+                  <th>Notes / Specs</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+          ${sketchHtml}
+        </div>
+
+        <div class="print-summary-box">
+          <div class="print-totals">
+            <div><strong>Notes:</strong> All measurements subject to on-site tolerances. Confirm critical clear-spaces prior to cutting.</div>
+            <div style="color: #64748b; font-size: 7pt; margin-top: 2px;">Units referenced: ${[...new Set(items.map(i => i.unit))].join(', ') || 'N/A'}</div>
+          </div>
+          ${opts.includeSignature ? `
+          <div class="print-signature-block">
+            <div class="print-sign-line">Measured By / Date</div>
+            <div class="print-sign-line">Approved / Customer</div>
+          </div>` : ''}
+        </div>
+
+        <div class="print-footer-tag">
+          Document ID: SZN-${project.id} &bull; SizeNotes Single-Screen Measurement System
+        </div>
       </div>
     `;
 
@@ -139,7 +157,7 @@ const PDFGenerator = {
   },
 
   /**
-   * Generates a valid pure-JavaScript PDF 1.4 binary file
+   * Generates a valid pure-JavaScript PDF 1.4 binary file Blob
    */
   generatePDFBinary(project, items, options = {}) {
     // Basic PDF 1.4 A4 dimensions: 595.28 x 841.89 pt
@@ -153,22 +171,39 @@ const PDFGenerator = {
       return String(text).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
     };
 
-    // Header Drawing
     lines.push('q');
+
+    // Outer architectural sheet border frame
+    const framePad = 16;
+    lines.push(`0.08 0.12 0.18 RG 1.2 w ${framePad} ${framePad} ${width - framePad * 2} ${height - framePad * 2} re s`);
+
+    let currentTop = height - 40;
+
+    // Optional Company Branding Line
+    if (options.companyName) {
+      lines.push(`0.05 0.09 0.16 rg`);
+      lines.push(`BT /F2 11 Tf ${margin} ${currentTop} Td (${sanitize(options.companyName.toUpperCase())}) Tj ET`);
+      if (options.companyContact) {
+        lines.push(`0.4 0.45 0.5 rg`);
+        lines.push(`BT /F1 8 Tf ${width - margin - 200} ${currentTop} Td (${sanitize(options.companyContact)}) Tj ET`);
+      }
+      currentTop -= 22;
+    }
+
     // Top banner border
-    lines.push(`0.05 0.09 0.16 rg`); // Dark navy fill
-    lines.push(`${margin} ${height - 60} ${width - margin * 2} 3 re f`);
+    lines.push(`0.05 0.09 0.16 rg`);
+    lines.push(`${margin} ${currentTop - 12} ${width - margin * 2} 3 re f`);
     
     // Title
-    lines.push(`BT /F2 16 Tf ${margin} ${height - 50} Td (${sanitize(options.title || 'MEASUREMENT SPECIFICATION SHEET')}) Tj ET`);
-    lines.push(`BT /F1 9 Tf ${margin} ${height - 68} Td (Project: ${sanitize(project.title)} | Ref: ${sanitize(project.id.slice(-6).toUpperCase())}) Tj ET`);
+    lines.push(`BT /F2 15 Tf ${margin} ${currentTop} Td (${sanitize(options.title || 'MEASUREMENT SPECIFICATION SHEET')}) Tj ET`);
+    lines.push(`BT /F1 9 Tf ${margin} ${currentTop - 18} Td (Project: ${sanitize(project.title)} | Ref: ${sanitize(project.id.slice(-6).toUpperCase())}) Tj ET`);
     
     const dateStr = options.date || new Date().toLocaleDateString();
-    lines.push(`BT /F2 9 Tf ${width - margin - 120} ${height - 50} Td (DATE: ${sanitize(dateStr)}) Tj ET`);
-    lines.push(`BT /F1 8 Tf ${width - margin - 120} ${height - 64} Td (Client: ${sanitize(project.client || 'Standard')}) Tj ET`);
+    lines.push(`BT /F2 9 Tf ${width - margin - 120} ${currentTop} Td (DATE: ${sanitize(dateStr)}) Tj ET`);
+    lines.push(`BT /F1 8 Tf ${width - margin - 120} ${currentTop - 14} Td (Client: ${sanitize(project.client || 'Standard')}) Tj ET`);
 
     // Meta box
-    const metaY = height - 105;
+    const metaY = currentTop - 50;
     lines.push(`0.95 0.96 0.98 rg ${margin} ${metaY} ${width - margin * 2} 24 re f`);
     lines.push(`0.8 0.84 0.88 RG 1 w ${margin} ${metaY} ${width - margin * 2} 24 re s`);
     lines.push(`BT /F2 8 Tf ${margin + 10} ${metaY + 8} Td (TOTAL ITEMS: ${items.length}) Tj ET`);
@@ -177,7 +212,7 @@ const PDFGenerator = {
     lines.push(`BT /F2 8 Tf ${margin + 330} ${metaY + 8} Td (ID: SZN-${sanitize(project.id.slice(0, 8))}) Tj ET`);
 
     // Table Header
-    let tableY = height - 130;
+    let tableY = metaY - 24;
     lines.push(`0.08 0.12 0.20 rg ${margin} ${tableY - 18} ${width - margin * 2} 18 re f`);
     lines.push(`1 1 1 rg`); // White text
     lines.push(`BT /F2 8 Tf ${margin + 8} ${tableY - 13} Td (#) Tj ET`);
@@ -269,9 +304,57 @@ const PDFGenerator = {
     return new Blob([pdf], { type: 'application/pdf' });
   },
 
+  generatePDFBlob(project, items, options = {}) {
+    return this.generatePDFBinary(project, items, options);
+  },
+
   downloadPDF(project, items, options = {}) {
     const blob = this.generatePDFBinary(project, items, options);
     const fileName = `${(project.title || 'measurements').toLowerCase().replace(/[^a-z0-9]/g, '-')}-notes.pdf`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  /**
+   * Generates standard RFC 4180 CSV with UTF-8 BOM for Excel / Google Sheets
+   */
+  generateCSV(project, items) {
+    const sanitizeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const lines = [
+      [`# PROJECT: ${project.title || 'Measurement Sheet'}`, `Date: ${new Date().toLocaleDateString()}`, '', '', '', '', ''].map(sanitizeCsv).join(','),
+      ['#', 'Item / Dimension', 'Value', 'Unit', 'Category', 'Verified', 'Notes'].map(sanitizeCsv).join(',')
+    ];
+
+    items.forEach((item, idx) => {
+      lines.push([
+        idx + 1,
+        item.label || '',
+        item.value || '',
+        item.unit || '',
+        item.category || '',
+        item.verified ? 'YES' : 'NO',
+        item.notes || ''
+      ].map(sanitizeCsv).join(','));
+    });
+
+    const csvText = '\uFEFF' + lines.join('\r\n');
+    return new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+  },
+
+  downloadCSV(project, items) {
+    const blob = this.generateCSV(project, items);
+    const fileName = `${(project.title || 'measurements').toLowerCase().replace(/[^a-z0-9]/g, '-')}-data.csv`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

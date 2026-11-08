@@ -1,6 +1,7 @@
 /**
  * SizeNotes - Touch & Mouse Sketch Pad Module
- * Optimized for mobile touch, dimension arrows, and fast architectural/tailoring doodle
+ * Optimized for mobile touch, dimension arrows, photo backdrop, text stamps,
+ * and fast architectural/tailoring doodle.
  */
 class SketchPad {
   constructor(canvasId) {
@@ -9,7 +10,7 @@ class SketchPad {
     this.ctx = this.canvas.getContext('2d');
     
     this.isDrawing = false;
-    this.tool = 'pen'; // 'pen', 'line', 'arrow', 'rect', 'eraser'
+    this.tool = 'pen'; // 'pen', 'line', 'arrow', 'rect', 'text', 'eraser'
     this.color = '#0284c7';
     this.lineWidth = 3;
     
@@ -37,20 +38,27 @@ class SketchPad {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
     this.ctx.scale(dpr, dpr);
     this.clearBackground();
+    this.history = [];
     this.saveState();
   }
 
   clearBackground() {
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = this.canvas.width / dpr;
+    const cssHeight = this.canvas.height / dpr;
+
+    this.ctx.save();
     this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillRect(0, 0, cssWidth, cssHeight);
     // Draw subtle grid dots for measurement guidance
-    this.drawGrid();
+    this.drawGrid(cssWidth, cssHeight);
+    this.ctx.restore();
   }
 
-  drawGrid() {
+  drawGrid(cssWidth, cssHeight) {
     const spacing = 20;
-    const width = this.canvas.width;
-    const height = this.canvas.height;
+    const width = cssWidth || (this.canvas.width / (window.devicePixelRatio || 1));
+    const height = cssHeight || (this.canvas.height / (window.devicePixelRatio || 1));
     this.ctx.fillStyle = '#e2e8f0';
     for (let x = spacing; x < width; x += spacing) {
       for (let y = spacing; y < height; y += spacing) {
@@ -62,7 +70,7 @@ class SketchPad {
   saveState() {
     try {
       this.history.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
-      if (this.history.length > 20) {
+      if (this.history.length > 25) {
         this.history.shift();
       }
     } catch (e) {
@@ -104,6 +112,16 @@ class SketchPad {
     const start = (e) => {
       e.preventDefault();
       const pos = this.getPointerPos(e);
+
+      if (this.tool === 'text') {
+        // Text Stamp tool: prompt user for dimension label / text
+        const label = window.prompt('Enter measurement note or dimension label (e.g. "140 cm", "Clearance"):');
+        if (label && label.trim()) {
+          this.drawTextBadge(label.trim(), pos.x, pos.y);
+        }
+        return;
+      }
+
       this.isDrawing = true;
       this.startX = pos.x;
       this.startY = pos.y;
@@ -200,6 +218,88 @@ class SketchPad {
     this.ctx.fill();
   }
 
+  drawTextBadge(text, x, y) {
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = this.canvas.width / dpr;
+    const cssHeight = this.canvas.height / dpr;
+
+    this.ctx.save();
+    this.ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const metrics = this.ctx.measureText(text);
+    const textWidth = metrics.width;
+    const paddingX = 8;
+    const boxWidth = textWidth + paddingX * 2;
+    const boxHeight = 22;
+
+    const startX = Math.max(4, Math.min(x - boxWidth / 2, cssWidth - boxWidth - 4));
+    const startY = Math.max(4, Math.min(y - boxHeight / 2, cssHeight - boxHeight - 4));
+
+    // Badge pill shadow & background
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    this.ctx.shadowBlur = 4;
+    this.ctx.shadowOffsetY = 1;
+    this.roundRect(startX, startY, boxWidth, boxHeight, 4, true, false);
+
+    // Border with active drawing color
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.lineWidth = 1.5;
+    this.ctx.strokeStyle = this.color;
+    this.roundRect(startX, startY, boxWidth, boxHeight, 4, false, true);
+
+    // Text in active drawing color
+    this.ctx.fillStyle = this.color;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(text, startX + boxWidth / 2, startY + boxHeight / 2);
+    this.ctx.restore();
+
+    this.saveState();
+  }
+
+  roundRect(x, y, w, h, r, fill, stroke) {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + r, y);
+    this.ctx.arcTo(x + w, y, x + w, y + h, r);
+    this.ctx.arcTo(x + w, y + h, x, y + h, r);
+    this.ctx.arcTo(x, y + h, x, y, r);
+    this.ctx.arcTo(x, y, x + w, y, r);
+    this.ctx.closePath();
+    if (fill) this.ctx.fill();
+    if (stroke) this.ctx.stroke();
+  }
+
+  loadPhoto(file, callback) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = this.canvas.width / dpr;
+        const cssHeight = this.canvas.height / dpr;
+
+        // Contain photo preserving aspect ratio
+        const hRatio = cssWidth / img.width;
+        const vRatio = cssHeight / img.height;
+        const ratio = Math.min(hRatio, vRatio);
+        const drawWidth = img.width * ratio;
+        const drawHeight = img.height * ratio;
+        const shiftX = (cssWidth - drawWidth) / 2;
+        const shiftY = (cssHeight - drawHeight) / 2;
+
+        this.clearBackground();
+        this.ctx.drawImage(img, 0, 0, img.width, img.height, shiftX, shiftY, drawWidth, drawHeight);
+        this.saveState();
+        if (callback) callback();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   toDataURL() {
     return this.canvas.toDataURL('image/png');
   }
@@ -213,8 +313,10 @@ class SketchPad {
     const img = new Image();
     img.onload = () => {
       this.clearBackground();
-      const rect = this.canvas.parentElement.getBoundingClientRect();
-      this.ctx.drawImage(img, 0, 0, rect.width, 260);
+      const dpr = window.devicePixelRatio || 1;
+      const cssWidth = this.canvas.width / dpr;
+      const cssHeight = this.canvas.height / dpr;
+      this.ctx.drawImage(img, 0, 0, cssWidth, cssHeight);
       this.history = [];
       this.saveState();
       if (callback) callback();

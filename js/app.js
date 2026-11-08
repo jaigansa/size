@@ -1,6 +1,9 @@
 /**
  * SizeNotes - Mobile Measurement App
  * Single-Screen Application with Modal Popups Architecture (Zero Tabs)
+ * Enhanced with Photo Backdrop, Dimension Stamp, Drag/Reorder,
+ * Native Share Sheet, CSV Export, Batch Unit Conversion, Custom Templates,
+ * Multi-Dimension 2D/3D Mode, Contractor Branding, and Undo Deletion.
  */
 
 (function () {
@@ -9,41 +12,20 @@
   // --- Storage Constants & Defaults ---
   const STORAGE_KEY = 'sizenotes_projects_v2';
   const ACTIVE_PROJECT_KEY = 'sizenotes_active_pid';
+  const CUSTOM_TEMPLATES_KEY = 'sizenotes_custom_templates_v1';
+  const BRANDING_KEY = 'sizenotes_branding_v1';
+  const THEME_KEY = 'sizenotes_theme_v1';
 
-  // Starter Sample Projects
+  // Default Initial Project (Clean, zero preloaded items)
   const DEFAULT_PROJECTS = [
     {
-      id: 'proj_room_01',
-      title: 'Master Bedroom Remodel',
-      client: 'Home Project',
-      category: 'Interior',
+      id: 'proj_default_01',
+      title: 'New Measurement Sheet',
+      client: '',
+      category: 'General',
       updatedAt: new Date().toISOString(),
       sketchData: null,
-      items: [
-        { id: 'm1', label: 'North Wall Length', value: '420', unit: 'cm', category: 'Walls', notes: 'Include baseboard gap', verified: true },
-        { id: 'm2', label: 'East Wall Width', value: '345', unit: 'cm', category: 'Walls', notes: 'Clearance to doorway', verified: true },
-        { id: 'm3', label: 'Ceiling Height', value: '260', unit: 'cm', category: 'Height', notes: 'Under crown molding', verified: true },
-        { id: 'm4', label: 'Main Window Width', value: '180', unit: 'cm', category: 'Windows', notes: 'Recessed frame depth 15cm', verified: false },
-        { id: 'm5', label: 'Window Sill Height', value: '85', unit: 'cm', category: 'Windows', notes: 'From finished floor', verified: false },
-        { id: 'm6', label: 'Doorway Opening', value: '92', unit: 'cm', category: 'Doors', notes: 'Standard door leaf', verified: true },
-        { id: 'm7', label: 'Closet Alcove Depth', value: '65', unit: 'cm', category: 'Storage', notes: 'For sliding wardrobe', verified: false }
-      ]
-    },
-    {
-      id: 'proj_suit_02',
-      title: 'Bespoke Jacket & Trousers',
-      client: 'Alex Morgan',
-      category: 'Tailoring',
-      updatedAt: new Date(Date.now() - 86400000).toISOString(),
-      sketchData: null,
-      items: [
-        { id: 't1', label: 'Chest Circumference', value: '40 1/2', unit: 'in', category: 'Upper Body', notes: 'Standard ease', verified: true },
-        { id: 't2', label: 'Natural Waist', value: '33', unit: 'in', category: 'Torso', notes: 'Snug fit', verified: true },
-        { id: 't3', label: 'Shoulder Seam to Seam', value: '18 1/4', unit: 'in', category: 'Shoulders', notes: 'Natural shoulder line', verified: true },
-        { id: 't4', label: 'Sleeve Length', value: '25', unit: 'in', category: 'Arms', notes: 'Show 1/2" shirt cuff', verified: true },
-        { id: 't5', label: 'Jacket Back Length', value: '29 1/2', unit: 'in', category: 'Length', notes: 'Cover seat', verified: true },
-        { id: 't6', label: 'Trouser Inseam', value: '31', unit: 'in', category: 'Lower Body', notes: 'Slight break at shoe', verified: false }
-      ]
+      items: []
     }
   ];
 
@@ -109,6 +91,10 @@
   let currentFilterCategory = 'ALL';
   let searchQuery = '';
   let sketchPad = null;
+  let lastDeletedItem = null;
+  let activeDimMode = '1d'; // '1d', '2d', '3d'
+  let customTemplates = [];
+  let companyBranding = { name: '', contact: '', logo: null };
 
   // --- DOM Elements ---
   const el = {
@@ -116,6 +102,7 @@
     displayProjectTitle: document.getElementById('displayProjectTitle'),
     displayProjectCategory: document.getElementById('displayProjectCategory'),
     btnOpenProjects: document.getElementById('btnOpenProjects'),
+    btnOpenTheme: document.getElementById('btnOpenTheme'),
     btnOpenSketch: document.getElementById('btnOpenSketch'),
     btnOpenTemplates: document.getElementById('btnOpenTemplates'),
     btnOpenConverter: document.getElementById('btnOpenConverter'),
@@ -153,6 +140,15 @@
     // Measurement Modal
     popupMeasurement: document.getElementById('popupMeasurement'),
     measurementModalTitle: document.getElementById('measurementModalTitle'),
+    dimModeTabs: document.getElementById('dimModeTabs'),
+    compositeInputsBox: document.getElementById('compositeInputsBox'),
+    compositeInputsGrid: document.getElementById('compositeInputsGrid'),
+    inputDimL: document.getElementById('inputDimL'),
+    inputDimW: document.getElementById('inputDimW'),
+    inputDimH: document.getElementById('inputDimH'),
+    colDimH: document.getElementById('colDimH'),
+    compositeCalcBadge: document.getElementById('compositeCalcBadge'),
+    singleValueGrid: document.getElementById('singleValueGrid'),
     inputItemLabel: document.getElementById('inputItemLabel'),
     inputItemValue: document.getElementById('inputItemValue'),
     selectItemUnit: document.getElementById('selectItemUnit'),
@@ -182,7 +178,10 @@
     toolLine: document.getElementById('toolLine'),
     toolArrow: document.getElementById('toolArrow'),
     toolRect: document.getElementById('toolRect'),
+    toolText: document.getElementById('toolText'),
     toolEraser: document.getElementById('toolEraser'),
+    btnSketchPhoto: document.getElementById('btnSketchPhoto'),
+    sketchPhotoInput: document.getElementById('sketchPhotoInput'),
     toolUndo: document.getElementById('toolUndo'),
     toolClear: document.getElementById('toolClear'),
 
@@ -190,16 +189,29 @@
     popupPdf: document.getElementById('popupPdf'),
     pdfTitleInput: document.getElementById('pdfTitleInput'),
     pdfClientInput: document.getElementById('pdfClientInput'),
+    pdfCompanyInput: document.getElementById('pdfCompanyInput'),
+    pdfContactInput: document.getElementById('pdfContactInput'),
+    pdfLogoInput: document.getElementById('pdfLogoInput'),
+    pdfLogoPreviewContainer: document.getElementById('pdfLogoPreviewContainer'),
+    pdfLogoPreview: document.getElementById('pdfLogoPreview'),
+    btnClearLogo: document.getElementById('btnClearLogo'),
     pdfIncludeSketch: document.getElementById('pdfIncludeSketch'),
     pdfIncludeSign: document.getElementById('pdfIncludeSign'),
     pdfLivePreview: document.getElementById('pdfLivePreview'),
+    btnShareSheet: document.getElementById('btnShareSheet'),
     btnExecutePrint: document.getElementById('btnExecutePrint'),
     btnDownloadPdf: document.getElementById('btnDownloadPdf'),
+    btnDownloadCsv: document.getElementById('btnDownloadCsv'),
     btnCopyTextSummary: document.getElementById('btnCopyTextSummary'),
 
     // Templates Modal
     popupTemplates: document.getElementById('popupTemplates'),
     checkAppendTemplate: document.getElementById('checkAppendTemplate'),
+    btnSaveSheetAsTemplate: document.getElementById('btnSaveSheetAsTemplate'),
+    customTemplatesContainer: document.getElementById('customTemplatesContainer'),
+
+    // Theme Modal
+    popupTheme: document.getElementById('popupTheme'),
 
     // Converter Modal
     popupConverter: document.getElementById('popupConverter'),
@@ -215,6 +227,8 @@
     calcAreaVal: document.getElementById('calcAreaVal'),
     calcPerimVal: document.getElementById('calcPerimVal'),
     calcVolVal: document.getElementById('calcVolVal'),
+    selectBatchTargetUnit: document.getElementById('selectBatchTargetUnit'),
+    btnBatchConvertUnits: document.getElementById('btnBatchConvertUnits'),
 
     // Print Container & Toast
     printPageLayout: document.getElementById('print-page-layout'),
@@ -230,6 +244,24 @@
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         projects = JSON.parse(stored);
+        // Clear out legacy preloaded default items from starter sample sheets
+        let modified = false;
+        if (Array.isArray(projects)) {
+          projects.forEach(p => {
+            if (p.id === 'proj_room_01' || p.id === 'proj_suit_02') {
+              if (p.items && p.items.length > 0 && p.items.some(i => i.id === 'm1' || i.id === 't1')) {
+                p.items = [];
+                p.title = 'New Measurement Sheet';
+                p.client = '';
+                p.category = 'General';
+                modified = true;
+              }
+            }
+          });
+        }
+        if (modified) {
+          saveData();
+        }
       } else {
         projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
         saveData();
@@ -239,14 +271,15 @@
       projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
     }
 
+    if (!projects || projects.length === 0) {
+      projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+    }
+
     const savedPid = localStorage.getItem(ACTIVE_PROJECT_KEY);
     currentProject = projects.find(p => p.id === savedPid) || projects[0] || null;
 
-    if (!currentProject && projects.length > 0) {
-      currentProject = projects[0];
-    } else if (!currentProject) {
-      createNewProject('My Measurement Sheet');
-    }
+    loadBranding();
+    loadCustomTemplates();
   }
 
   function saveData() {
@@ -256,31 +289,162 @@
         localStorage.setItem(ACTIVE_PROJECT_KEY, currentProject.id);
       }
     } catch (e) {
-      console.warn('LocalStorage save error:', e);
-      showToast('⚠️ Storage limit reached or private mode', 3000);
+      console.error('Failed to save to localStorage:', e);
     }
+  }
+
+  function loadBranding() {
+    try {
+      const stored = localStorage.getItem(BRANDING_KEY);
+      if (stored) {
+        companyBranding = JSON.parse(stored);
+      }
+    } catch (e) {
+      companyBranding = { name: '', contact: '', logo: null };
+    }
+    if (el.pdfCompanyInput) el.pdfCompanyInput.value = companyBranding.name || '';
+    if (el.pdfContactInput) el.pdfContactInput.value = companyBranding.contact || '';
+    renderLogoPreview();
+  }
+
+  function saveBranding() {
+    companyBranding.name = (el.pdfCompanyInput ? el.pdfCompanyInput.value.trim() : '');
+    companyBranding.contact = (el.pdfContactInput ? el.pdfContactInput.value.trim() : '');
+    try {
+      localStorage.setItem(BRANDING_KEY, JSON.stringify(companyBranding));
+    } catch (e) {
+      console.warn('Failed to save branding:', e);
+    }
+  }
+
+  function renderLogoPreview() {
+    if (companyBranding.logo) {
+      el.pdfLogoPreview.src = companyBranding.logo;
+      el.pdfLogoPreviewContainer.style.display = 'inline-flex';
+    } else {
+      el.pdfLogoPreview.src = '';
+      el.pdfLogoPreviewContainer.style.display = 'none';
+    }
+  }
+
+  function loadCustomTemplates() {
+    try {
+      const stored = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
+      customTemplates = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      customTemplates = [];
+    }
+    renderCustomTemplates();
+  }
+
+  function saveCustomTemplates() {
+    try {
+      localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(customTemplates));
+    } catch (e) {
+      console.warn('Failed to save custom templates:', e);
+    }
+    renderCustomTemplates();
   }
 
   function init() {
     loadData();
-    renderAll();
-    bindGlobalListeners();
+    initTheme();
     initSketchPad();
     initConverter();
-    updatePdfPreview();
+    bindGlobalListeners();
+    renderAll();
+
+    // Register Service Worker for offline PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(err => {
+        console.warn('SW registration skipped or failed:', err);
+      });
+    }
   }
 
   // ==========================================================================
-  // POPUP MODAL MANAGER (Strictly NO TABS, Only Popups)
+  // COLOR THEMES SYSTEM
+  // ==========================================================================
+
+  function initTheme() {
+    let savedTheme = 'light';
+    try {
+      savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+    } catch (e) {
+      savedTheme = 'light';
+    }
+    applyTheme(savedTheme, false);
+
+    if (el.btnOpenTheme) {
+      el.btnOpenTheme.addEventListener('click', () => openPopup(el.popupTheme));
+    }
+
+    if (el.popupTheme) {
+      el.popupTheme.querySelectorAll('.theme-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const theme = card.dataset.theme;
+          applyTheme(theme, true);
+          closePopup(el.popupTheme);
+        });
+      });
+    }
+  }
+
+  function applyTheme(themeName, showToastMsg = true) {
+    const validThemes = ['light', 'obsidian', 'blueprint', 'workshop', 'emerald'];
+    if (!validThemes.includes(themeName)) {
+      if (themeName === 'sunlight' || themeName === 'white') themeName = 'light';
+      else themeName = 'light';
+    }
+
+    document.documentElement.dataset.theme = themeName;
+    try {
+      localStorage.setItem(THEME_KEY, themeName);
+    } catch (e) {
+      console.warn('Failed to save theme:', e);
+    }
+
+    const themeColors = {
+      light: '#ffffff',
+      obsidian: '#070a10',
+      blueprint: '#0a1324',
+      workshop: '#121316',
+      emerald: '#071510'
+    };
+    const metaColor = document.getElementById('metaThemeColor') || document.querySelector('meta[name="theme-color"]');
+    if (metaColor) {
+      metaColor.setAttribute('content', themeColors[themeName] || '#ffffff');
+    }
+
+    if (el.popupTheme) {
+      el.popupTheme.querySelectorAll('.theme-card').forEach(c => {
+        c.classList.toggle('active', c.dataset.theme === themeName);
+      });
+    }
+
+    if (showToastMsg) {
+      const names = {
+        light: 'Clean White',
+        obsidian: 'Obsidian Azure',
+        blueprint: 'Blueprint Tech',
+        workshop: 'Workshop Amber',
+        emerald: 'Emerald Craft'
+      };
+      showToast(`✓ Color theme: ${names[themeName] || themeName}`);
+    }
+  }
+
+  // ==========================================================================
+  // MODAL / POPUP CONTROLLER (Zero Tabs - Pure Popups)
   // ==========================================================================
 
   function openPopup(modalElement) {
     if (!modalElement) return;
-    closeAllPopups();
+    closeCategoryDropdown();
     modalElement.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Auto-focus primary input if available
+    // Auto-focus first meaningful field
     setTimeout(() => {
       const input = modalElement.querySelector('input:not([type="checkbox"]):not([readonly]), textarea');
       if (input) input.focus();
@@ -294,21 +458,22 @@
   }
 
   function closeAllPopups() {
-    document.querySelectorAll('.popup-overlay').forEach(popup => {
-      popup.classList.remove('active');
-    });
+    document.querySelectorAll('.popup-overlay').forEach(p => p.classList.remove('active'));
     document.body.style.overflow = '';
   }
 
   // ==========================================================================
-  // RENDERING ENGINE
+  // RENDER ENGINE (Single Screen Layout)
   // ==========================================================================
 
   function renderAll() {
+    if (!currentProject && projects.length > 0) {
+      currentProject = projects[0];
+    }
+
     renderHeaderAndStats();
     renderCategoryDropdown();
     renderMeasurementList();
-    updatePdfPreview();
   }
 
   function renderHeaderAndStats() {
@@ -317,19 +482,21 @@
     el.displayProjectTitle.textContent = currentProject.title || 'Untitled Sheet';
     el.displayProjectCategory.textContent = currentProject.category || 'General';
 
-    // Badge dot on sketch button if a sketch is saved
+    // Visual Sketch Dot Indicator
     const hasSketch = !!currentProject.sketchData;
-    el.sketchBadgeDot.style.display = hasSketch ? 'block' : 'none';
+    if (el.sketchBadgeDot) {
+      el.sketchBadgeDot.style.display = hasSketch ? 'block' : 'none';
+    }
 
-    // Summary calculations
+    // Calculate Summary Stats
     const items = currentProject.items || [];
     const totalCount = items.length;
     const verifiedCount = items.filter(i => i.verified).length;
-
+    
     el.statItemCount.textContent = totalCount;
     el.statVerifiedSub.textContent = `${verifiedCount} verified`;
 
-    // Unit counts
+    // Detect primary unit
     const unitMap = {};
     items.forEach(i => {
       const u = (i.unit || 'unit').toLowerCase();
@@ -344,16 +511,15 @@
         mainUnit = u;
       }
     }
-
-    el.statMainUnit.textContent = mainUnit;
     const distinctUnits = Object.keys(unitMap).length;
-    el.statUnitCount.textContent = `${distinctUnits} unit type${distinctUnits === 1 ? '' : 's'}`;
+    el.statMainUnit.textContent = mainUnit;
+    el.statUnitCount.textContent = `${distinctUnits} unit${distinctUnits === 1 ? '' : 's'}`;
 
-    // Total sum of measurements sharing dominant unit
+    // Sum of primary unit items
     let sum = 0;
     let sumCount = 0;
     items.forEach(i => {
-      if (i.unit === mainUnit) {
+      if ((i.unit || '').toLowerCase() === mainUnit) {
         const val = parseFractionOrDecimal(i.value);
         if (!isNaN(val)) {
           sum += val;
@@ -362,9 +528,7 @@
       }
     });
 
-    el.statTotalSum.textContent = sumCount > 0 ? (Math.round(sum * 100) / 100) + ' ' + mainUnit : '0';
-
-    // Distinct categories
+    el.statTotalSum.textContent = sumCount > 0 ? (Math.round(sum * 100) / 100) : '0';
     const categories = new Set(items.map(i => i.category || 'General'));
     el.statGroupCount.textContent = `${categories.size} group${categories.size === 1 ? '' : 's'}`;
   }
@@ -372,96 +536,95 @@
   function parseFractionOrDecimal(valStr) {
     if (!valStr) return NaN;
     valStr = String(valStr).trim();
-    if (!valStr) return NaN;
 
-    // Direct decimal
-    if (!isNaN(valStr)) return parseFloat(valStr);
+    // If composite (e.g. 120 × 80), take first number for summation
+    if (valStr.includes('×') || valStr.includes('x') || valStr.includes('X')) {
+      valStr = valStr.split(/[×xX]/)[0].trim();
+    }
 
-    // Mixed fraction like "42 1/2" or "1/4"
-    const parts = valStr.split(/\s+/);
-    if (parts.length === 2 && parts[1].includes('/')) {
+    // Handle mixed fraction e.g. "40 1/2"
+    if (valStr.includes(' ')) {
+      const parts = valStr.split(/\s+/);
       const whole = parseFloat(parts[0]) || 0;
-      const fracParts = parts[1].split('/');
-      const num = parseFloat(fracParts[0]);
-      const den = parseFloat(fracParts[1]);
-      if (den !== 0) return whole + (num / den);
-    } else if (parts.length === 1 && parts[0].includes('/')) {
-      const fracParts = parts[0].split('/');
+      if (parts[1] && parts[1].includes('/')) {
+        const fracParts = parts[1].split('/');
+        const num = parseFloat(fracParts[0]);
+        const den = parseFloat(fracParts[1]);
+        if (den !== 0) return whole + (num / den);
+      }
+      return whole;
+    }
+
+    // Handle pure fraction e.g. "3/4"
+    if (valStr.includes('/')) {
+      const fracParts = valStr.split('/');
       const num = parseFloat(fracParts[0]);
       const den = parseFloat(fracParts[1]);
       if (den !== 0) return num / den;
     }
-    return NaN;
+
+    return parseFloat(valStr);
   }
+
+  // ==========================================================================
+  // UNIFIED SEARCH & CATEGORY SELECTOR
+  // ==========================================================================
 
   function renderCategoryDropdown() {
     if (!currentProject) return;
     const items = currentProject.items || [];
 
-    // Calculate counts per category
+    // Tally item counts per category
     const catCounts = { ALL: items.length };
-    const distinctCats = [];
-    items.forEach(i => {
-      const c = i.category || 'General';
-      if (!catCounts[c]) {
-        catCounts[c] = 0;
-        distinctCats.push(c);
-      }
-      catCounts[c]++;
+    items.forEach(item => {
+      const cat = item.category || 'General';
+      catCounts[cat] = (catCounts[cat] || 0) + 1;
     });
 
-    // Check if currently selected category still exists, else reset to ALL
+    // If current filter category no longer exists, reset to ALL
     if (currentFilterCategory !== 'ALL' && !catCounts[currentFilterCategory]) {
       currentFilterCategory = 'ALL';
     }
 
-    // Update label & filter status on the dropdown button
-    if (currentFilterCategory === 'ALL') {
-      el.searchCatLabel.textContent = 'All';
-      el.searchCatBtn.classList.remove('has-filter');
-      el.searchCatBtn.title = 'Filter by Category (Showing All)';
-    } else {
-      el.searchCatLabel.textContent = currentFilterCategory;
-      el.searchCatBtn.classList.add('has-filter');
-      el.searchCatBtn.title = `Filtered by: ${currentFilterCategory}`;
-    }
+    el.searchCatLabel.textContent = currentFilterCategory === 'ALL' ? 'All' : currentFilterCategory;
 
-    // Populate dropdown options
-    el.searchCatMenu.innerHTML = '';
-    const allOptions = ['ALL', ...distinctCats];
+    // Build Menu Items
+    const categories = Object.keys(catCounts).filter(c => c !== 'ALL').sort();
+    let menuHtml = `
+      <div class="search-cat-item ${currentFilterCategory === 'ALL' ? 'active' : ''}" data-cat="ALL">
+        <span class="search-cat-name">All Categories</span>
+        <span class="search-cat-count">${catCounts.ALL || 0}</span>
+      </div>
+    `;
 
-    allOptions.forEach(cat => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      const isActive = cat === currentFilterCategory;
-      btn.className = `cat-menu-item ${isActive ? 'active' : ''}`;
-      
-      const labelText = cat === 'ALL' ? 'All Categories' : cat;
-      const count = catCounts[cat] || 0;
-
-      btn.innerHTML = `
-        <span class="cat-menu-name">
-          ${isActive ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="color:var(--accent-primary);"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
-          ${escapeHtml(labelText)}
-        </span>
-        <span class="cat-menu-count">${count}</span>
+    categories.forEach(cat => {
+      const isSelected = currentFilterCategory === cat;
+      menuHtml += `
+        <div class="search-cat-item ${isSelected ? 'active' : ''}" data-cat="${escapeHtml(cat)}">
+          <span class="search-cat-name">${escapeHtml(cat)}</span>
+          <span class="search-cat-count">${catCounts[cat]}</span>
+        </div>
       `;
+    });
 
-      btn.addEventListener('click', (e) => {
+    el.searchCatMenu.innerHTML = menuHtml;
+
+    // Attach click listeners to menu items
+    el.searchCatMenu.querySelectorAll('.search-cat-item').forEach(itemEl => {
+      itemEl.addEventListener('click', (e) => {
         e.stopPropagation();
-        currentFilterCategory = cat;
+        const selectedCat = itemEl.dataset.cat;
+        currentFilterCategory = selectedCat;
         closeCategoryDropdown();
         renderCategoryDropdown();
         renderMeasurementList();
       });
-
-      el.searchCatMenu.appendChild(btn);
     });
   }
 
   function toggleCategoryDropdown(e) {
-    if (e) e.stopPropagation();
-    const isOpen = el.searchCatDropdown.classList.contains('open');
+    e.stopPropagation();
+    const isOpen = el.searchBoxUnified.classList.contains('dropdown-open');
     if (isOpen) {
       closeCategoryDropdown();
     } else {
@@ -470,16 +633,18 @@
   }
 
   function openCategoryDropdown() {
-    el.searchCatDropdown.classList.add('open');
     el.searchBoxUnified.classList.add('dropdown-open');
     el.searchCatBtn.setAttribute('aria-expanded', 'true');
   }
 
   function closeCategoryDropdown() {
-    el.searchCatDropdown.classList.remove('open');
     el.searchBoxUnified.classList.remove('dropdown-open');
     el.searchCatBtn.setAttribute('aria-expanded', 'false');
   }
+
+  // ==========================================================================
+  // MEASUREMENT LIST & REORDERING
+  // ==========================================================================
 
   function renderMeasurementList() {
     if (!currentProject) return;
@@ -516,7 +681,8 @@
       card.dataset.id = item.id;
 
       const num = String(index + 1).padStart(2, '0');
-      const categoryTag = item.category ? `<span class="card-cat-badge">${escapeHtml(item.category)}</span>` : '';
+      const catClass = getCategoryColorClass(item.category);
+      const categoryTag = item.category ? `<span class="card-cat-badge ${catClass}">${escapeHtml(item.category)}</span>` : '';
       const notesLine = item.notes ? `<div class="card-notes">${escapeHtml(item.notes)}</div>` : '';
 
       card.innerHTML = `
@@ -532,6 +698,15 @@
         </div>
 
         <div class="card-right">
+          <div class="card-reorder-group" data-stop-propagation>
+            <button type="button" class="reorder-btn" data-action="move-up" title="Move Up" ${index === 0 ? 'disabled' : ''}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
+            <button type="button" class="reorder-btn" data-action="move-down" title="Move Down" ${index === filtered.length - 1 ? 'disabled' : ''}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          </div>
+
           <div class="card-value-box">
             <span class="card-value">${escapeHtml(item.value || '0')}</span>
             <span class="card-unit">${escapeHtml(item.unit || '')}</span>
@@ -545,19 +720,52 @@
         </div>
       `;
 
-      // Tap card opens edit popup
       card.addEventListener('click', (e) => {
-        // Prevent if tap was specifically on check toggle button
+        // Toggle check
         if (e.target.closest('[data-action="toggle-check"]')) {
           e.stopPropagation();
           toggleItemVerified(item.id);
           return;
         }
+
+        // Move Up
+        if (e.target.closest('[data-action="move-up"]')) {
+          e.stopPropagation();
+          moveItem(item.id, -1);
+          return;
+        }
+
+        // Move Down
+        if (e.target.closest('[data-action="move-down"]')) {
+          e.stopPropagation();
+          moveItem(item.id, 1);
+          return;
+        }
+
         openEditMeasurementModal(item);
       });
 
       el.measurementList.appendChild(card);
     });
+  }
+
+  function moveItem(itemId, delta) {
+    if (!currentProject || !currentProject.items) return;
+    const items = currentProject.items;
+    const idx = items.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+
+    const targetIdx = idx + delta;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+
+    // Swap items
+    const temp = items[idx];
+    items[idx] = items[targetIdx];
+    items[targetIdx] = temp;
+
+    currentProject.updatedAt = new Date().toISOString();
+    saveData();
+    renderMeasurementList();
   }
 
   function escapeHtml(str) {
@@ -570,9 +778,72 @@
       .replace(/'/g, '&#39;');
   }
 
+  function getCategoryColorClass(catName) {
+    if (!catName) return 'cat-blue';
+    const c = String(catName).toLowerCase();
+    if (c.includes('wall') || c.includes('room') || c.includes('dim') || c.includes('interior')) return 'cat-blue';
+    if (c.includes('wind') || c.includes('door') || c.includes('open') || c.includes('glass')) return 'cat-emerald';
+    if (c.includes('top') || c.includes('leg') || c.includes('wood') || c.includes('assem') || c.includes('hard') || c.includes('shelf')) return 'cat-amber';
+    if (c.includes('chest') || c.includes('body') || c.includes('tail') || c.includes('arm') || c.includes('shoul') || c.includes('torso')) return 'cat-purple';
+    if (c.includes('box') || c.includes('freight') || c.includes('pack') || c.includes('weight') || c.includes('outer')) return 'cat-rose';
+
+    const colors = ['cat-blue', 'cat-emerald', 'cat-amber', 'cat-purple', 'cat-rose'];
+    let hash = 0;
+    for (let i = 0; i < catName.length; i++) hash += catName.charCodeAt(i);
+    return colors[Math.abs(hash) % colors.length];
+  }
+
   // ==========================================================================
-  // MEASUREMENT ACTIONS (Add / Edit / Toggle / Delete)
+  // MEASUREMENT ACTIONS (Add / Edit / Multi-Dim / Delete)
   // ==========================================================================
+
+  function setDimMode(mode) {
+    activeDimMode = mode;
+    document.querySelectorAll('.dim-mode-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.dimMode === mode);
+    });
+
+    if (mode === '1d') {
+      el.singleValueGrid.style.display = 'grid';
+      el.compositeInputsBox.style.display = 'none';
+    } else if (mode === '2d') {
+      el.singleValueGrid.style.display = 'none';
+      el.compositeInputsBox.style.display = 'block';
+      el.colDimH.style.display = 'none';
+      updateCompositeCalc();
+    } else if (mode === '3d') {
+      el.singleValueGrid.style.display = 'none';
+      el.compositeInputsBox.style.display = 'block';
+      el.colDimH.style.display = 'block';
+      updateCompositeCalc();
+    }
+  }
+
+  function updateCompositeCalc() {
+    const l = parseFloat(el.inputDimL.value) || 0;
+    const w = parseFloat(el.inputDimW.value) || 0;
+    const h = parseFloat(el.inputDimH.value) || 0;
+    const unit = el.selectItemUnit.value || 'cm';
+
+    if (activeDimMode === '2d') {
+      if (l > 0 && w > 0) {
+        const area = (l * w).toFixed(2).replace(/\.00$/, '');
+        el.compositeCalcBadge.textContent = `📐 Area: ${area} ${unit}²`;
+        el.compositeCalcBadge.style.display = 'block';
+      } else {
+        el.compositeCalcBadge.style.display = 'none';
+      }
+    } else if (activeDimMode === '3d') {
+      if (l > 0 && w > 0 && h > 0) {
+        const vol = (l * w * h).toFixed(2).replace(/\.00$/, '');
+        const area = (l * w).toFixed(2).replace(/\.00$/, '');
+        el.compositeCalcBadge.textContent = `📦 Vol: ${vol} ${unit}³ • Area: ${area} ${unit}²`;
+        el.compositeCalcBadge.style.display = 'block';
+      } else {
+        el.compositeCalcBadge.style.display = 'none';
+      }
+    }
+  }
 
   function openAddMeasurementModal() {
     activeEditingItemId = null;
@@ -580,11 +851,15 @@
     el.btnDeleteMeasurement.style.display = 'none';
     el.btnSaveAndNext.style.display = 'inline-flex';
 
-    // Clear fields or set smart defaults based on previous item
+    // Reset inputs
     el.inputItemLabel.value = '';
     el.inputItemValue.value = '';
+    el.inputDimL.value = '';
+    el.inputDimW.value = '';
+    el.inputDimH.value = '';
     el.inputItemNotes.value = '';
     el.checkVerified.checked = false;
+    setDimMode('1d');
 
     // Retain last used unit and category for quick consecutive note taking
     const lastItem = currentProject.items && currentProject.items[currentProject.items.length - 1];
@@ -606,21 +881,63 @@
     el.btnSaveAndNext.style.display = 'none';
 
     el.inputItemLabel.value = item.label || '';
-    el.inputItemValue.value = item.value || '';
     el.selectItemUnit.value = item.unit || 'cm';
     el.inputItemCategory.value = item.category || '';
     el.inputItemNotes.value = item.notes || '';
     el.checkVerified.checked = !!item.verified;
+
+    // Detect if value is composite 2D or 3D
+    const val = String(item.value || '').trim();
+    if (val.includes('×') || val.includes('x') || val.includes('X')) {
+      const parts = val.split(/[×xX]/).map(s => s.trim());
+      if (parts.length >= 3) {
+        setDimMode('3d');
+        el.inputDimL.value = parts[0] || '';
+        el.inputDimW.value = parts[1] || '';
+        el.inputDimH.value = parts[2] || '';
+      } else {
+        setDimMode('2d');
+        el.inputDimL.value = parts[0] || '';
+        el.inputDimW.value = parts[1] || '';
+        el.inputDimH.value = '';
+      }
+      updateCompositeCalc();
+    } else {
+      setDimMode('1d');
+      el.inputItemValue.value = val;
+    }
 
     openPopup(el.popupMeasurement);
   }
 
   function saveCurrentMeasurement(andNext = false) {
     const label = el.inputItemLabel.value.trim();
-    const value = el.inputItemValue.value.trim();
+    let value = '';
+
+    if (activeDimMode === '1d') {
+      value = el.inputItemValue.value.trim();
+    } else if (activeDimMode === '2d') {
+      const l = el.inputDimL.value.trim();
+      const w = el.inputDimW.value.trim();
+      if (!l || !w) {
+        showToast('⚠️ Please enter Length and Width');
+        return;
+      }
+      value = `${l} × ${w}`;
+    } else if (activeDimMode === '3d') {
+      const l = el.inputDimL.value.trim();
+      const w = el.inputDimW.value.trim();
+      const h = el.inputDimH.value.trim();
+      if (!l || !w || !h) {
+        showToast('⚠️ Please enter Length, Width, and Height');
+        return;
+      }
+      value = `${l} × ${w} × ${h}`;
+    }
+
     const unit = el.selectItemUnit.value;
     const category = el.inputItemCategory.value.trim() || 'General';
-    const notes = el.inputItemNotes.value.trim();
+    let notes = el.inputItemNotes.value.trim();
     const verified = el.checkVerified.checked;
 
     if (!label) {
@@ -631,7 +948,6 @@
 
     if (!value) {
       showToast('⚠️ Please enter a measurement value');
-      el.inputItemValue.focus();
       return;
     }
 
@@ -674,9 +990,11 @@
       showToast('✓ Measurement added');
 
       if (andNext) {
-        // Reset only label and value for rapid note taking
         el.inputItemLabel.value = '';
         el.inputItemValue.value = '';
+        el.inputDimL.value = '';
+        el.inputDimW.value = '';
+        el.inputDimH.value = '';
         el.inputItemNotes.value = '';
         el.checkVerified.checked = false;
         el.inputItemLabel.focus();
@@ -688,12 +1006,37 @@
 
   function deleteCurrentMeasurement() {
     if (!activeEditingItemId || !currentProject) return;
-    currentProject.items = currentProject.items.filter(i => i.id !== activeEditingItemId);
+    const origIdx = currentProject.items.findIndex(i => i.id === activeEditingItemId);
+    if (origIdx === -1) return;
+
+    const itemToDelete = currentProject.items[origIdx];
+    lastDeletedItem = {
+      item: JSON.parse(JSON.stringify(itemToDelete)),
+      index: origIdx,
+      projectId: currentProject.id
+    };
+
+    currentProject.items.splice(origIdx, 1);
     currentProject.updatedAt = new Date().toISOString();
     saveData();
     renderAll();
     closePopup(el.popupMeasurement);
-    showToast('Item deleted');
+
+    showToast('Measurement deleted', 4500, {
+      actionText: 'Undo',
+      onAction: restoreDeletedItem
+    });
+  }
+
+  function restoreDeletedItem() {
+    if (!lastDeletedItem || !currentProject || lastDeletedItem.projectId !== currentProject.id) return;
+    const targetIdx = Math.min(lastDeletedItem.index, currentProject.items.length);
+    currentProject.items.splice(targetIdx, 0, lastDeletedItem.item);
+    currentProject.updatedAt = new Date().toISOString();
+    saveData();
+    renderAll();
+    showToast('✓ Measurement restored');
+    lastDeletedItem = null;
   }
 
   function toggleItemVerified(itemId) {
@@ -719,31 +1062,51 @@
 
   function renderProjectList() {
     el.projectListContainer.innerHTML = '';
-    projects.forEach(proj => {
-      const isActive = currentProject && proj.id === currentProject.id;
-      const count = (proj.items || []).length;
-      const itemEl = document.createElement('div');
-      itemEl.className = `project-item ${isActive ? 'active' : ''}`;
-      
-      const updatedDate = proj.updatedAt ? new Date(proj.updatedAt).toLocaleDateString() : '';
+    const countBadge = document.getElementById('sheetsCountBadge');
+    if (countBadge) {
+      countBadge.textContent = projects.length;
+    }
 
-      itemEl.innerHTML = `
-        <div class="project-item-left">
-          <div class="project-item-name">
-            ${escapeHtml(proj.title)}
-            ${isActive ? '<span style="font-size:0.7rem; color:var(--accent-primary); margin-left:6px;">[Active]</span>' : ''}
-          </div>
-          <div class="project-item-meta">${count} measurements &bull; ${escapeHtml(proj.category || 'General')} &bull; ${updatedDate}</div>
+    if (projects.length === 0) {
+      el.projectListContainer.innerHTML = `
+        <div style="text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 0.82rem;">
+          No sheets yet. Create your first sheet above!
         </div>
-        <div class="project-item-actions">
-          <button class="icon-btn" data-proj-id="${proj.id}" data-action="duplicate" title="Duplicate project" style="width:32px;height:32px;">
+      `;
+      return;
+    }
+
+    projects.forEach(proj => {
+      const isCurrent = currentProject && (proj.id === currentProject.id);
+      const card = document.createElement('div');
+      card.className = `project-item-card ${isCurrent ? 'active' : ''}`;
+      
+      const itemCount = (proj.items || []).length;
+      const dateStr = proj.updatedAt ? new Date(proj.updatedAt).toLocaleDateString() : 'Recent';
+
+      card.innerHTML = `
+        <div class="project-card-info">
+          <div class="project-card-title-row">
+            <span class="project-card-title">${escapeHtml(proj.title)}</span>
+            ${isCurrent ? '<span class="active-sheet-badge">✓ Active</span>' : ''}
+          </div>
+          <div class="project-card-meta">
+            <span class="project-meta-pill">${itemCount} item${itemCount === 1 ? '' : 's'}</span>
+            <span class="project-meta-dot">&bull;</span>
+            <span>${escapeHtml(proj.category || 'General')}</span>
+            <span class="project-meta-dot">&bull;</span>
+            <span>${dateStr}</span>
+          </div>
+        </div>
+        <div class="project-card-actions">
+          <button type="button" class="proj-action-btn" data-action="duplicate" title="Duplicate Sheet" aria-label="Duplicate Sheet">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
           ${projects.length > 1 ? `
-          <button class="icon-btn" data-proj-id="${proj.id}" data-action="delete" title="Delete project" style="width:32px;height:32px;color:var(--danger);">
+          <button type="button" class="proj-action-btn delete" data-action="delete" title="Delete Sheet" aria-label="Delete Sheet">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -752,52 +1115,42 @@
         </div>
       `;
 
-      // Tap on project row switches active project
-      itemEl.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        switchActiveProject(proj.id);
-        closePopup(el.popupProjects);
-      });
-
-      // Actions
-      const dupBtn = itemEl.querySelector('[data-action="duplicate"]');
-      if (dupBtn) {
-        dupBtn.addEventListener('click', (e) => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="duplicate"]')) {
           e.stopPropagation();
           duplicateProject(proj.id);
-        });
-      }
-
-      const delBtn = itemEl.querySelector('[data-action="delete"]');
-      if (delBtn) {
-        delBtn.addEventListener('click', (e) => {
+          return;
+        }
+        if (e.target.closest('[data-action="delete"]')) {
           e.stopPropagation();
           deleteProject(proj.id);
-        });
-      }
+          return;
+        }
+        switchActiveProject(proj.id);
+      });
 
-      el.projectListContainer.appendChild(itemEl);
+      el.projectListContainer.appendChild(card);
     });
   }
 
   function switchActiveProject(projectId) {
-    const proj = projects.find(p => p.id === projectId);
-    if (proj) {
-      currentProject = proj;
+    const found = projects.find(p => p.id === projectId);
+    if (found) {
+      currentProject = found;
       currentFilterCategory = 'ALL';
       searchQuery = '';
       el.searchInput.value = '';
       saveData();
       renderAll();
-      showToast(`Switched to: ${proj.title}`);
+      closePopup(el.popupProjects);
+      showToast(`Switched to: ${currentProject.title}`);
     }
   }
 
   function createNewProject(title) {
-    title = (title || '').trim() || 'New Measurement Sheet';
     const newProj = {
       id: 'proj_' + Date.now().toString(36),
-      title: title,
+      title: title || 'New Measurement Sheet',
       client: '',
       category: 'General',
       updatedAt: new Date().toISOString(),
@@ -808,22 +1161,25 @@
     currentProject = newProj;
     currentFilterCategory = 'ALL';
     searchQuery = '';
+    el.searchInput.value = '';
     saveData();
     renderAll();
-    showToast(`Created: ${title}`);
+    showToast(`✓ Created sheet: ${newProj.title}`);
   }
 
   function duplicateProject(projectId) {
     const orig = projects.find(p => p.id === projectId);
     if (!orig) return;
+
     const copy = JSON.parse(JSON.stringify(orig));
     copy.id = 'proj_' + Date.now().toString(36);
     copy.title = `${orig.title} (Copy)`;
     copy.updatedAt = new Date().toISOString();
+
     projects.unshift(copy);
-    switchActiveProject(copy.id);
+    saveData();
     renderProjectList();
-    showToast('Project duplicated');
+    showToast(`Duplicated sheet: ${copy.title}`);
   }
 
   function deleteProject(projectId) {
@@ -831,7 +1187,11 @@
       showToast('⚠️ Cannot delete the only project sheet');
       return;
     }
-    if (!confirm('Are you sure you want to delete this sheet?')) return;
+    const proj = projects.find(p => p.id === projectId);
+    if (!confirm(`Delete project "${proj ? proj.title : 'sheet'}"? This cannot be undone.`)) {
+      return;
+    }
+
     projects = projects.filter(p => p.id !== projectId);
     if (currentProject && currentProject.id === projectId) {
       currentProject = projects[0];
@@ -839,11 +1199,11 @@
     saveData();
     renderAll();
     renderProjectList();
-    showToast('Project sheet removed');
+    showToast('Project deleted');
   }
 
   // ==========================================================================
-  // SKETCH & DIAGRAM DOODLE PAD (Modal)
+  // SKETCH PAD (Modal)
   // ==========================================================================
 
   function initSketchPad() {
@@ -855,16 +1215,32 @@
       { btn: el.toolLine, name: 'line' },
       { btn: el.toolArrow, name: 'arrow' },
       { btn: el.toolRect, name: 'rect' },
+      { btn: el.toolText, name: 'text' },
       { btn: el.toolEraser, name: 'eraser' }
     ];
 
     tools.forEach(t => {
+      if (!t.btn) return;
       t.btn.addEventListener('click', () => {
-        tools.forEach(o => o.btn.classList.remove('active'));
+        tools.forEach(o => o.btn && o.btn.classList.remove('active'));
         t.btn.classList.add('active');
         sketchPad.tool = t.name;
       });
     });
+
+    // Photo Backdrop Upload
+    if (el.btnSketchPhoto && el.sketchPhotoInput) {
+      el.btnSketchPhoto.addEventListener('click', () => el.sketchPhotoInput.click());
+      el.sketchPhotoInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          sketchPad.loadPhoto(file, () => {
+            showToast('✓ Photo loaded into canvas');
+          });
+        }
+        e.target.value = '';
+      });
+    }
 
     // Colors
     document.querySelectorAll('.color-dot').forEach(dot => {
@@ -918,11 +1294,11 @@
         sketchPad.clear();
         el.sketchStatusLabel.textContent = 'No sketch saved';
       }
-    }, 100);
+    }, 120);
   }
 
   // ==========================================================================
-  // PDF GENERATION & PRINT (Single Screen & Single Page PDF)
+  // PDF, CSV & SHARE SHEET (Modal)
   // ==========================================================================
 
   function openPdfModal() {
@@ -933,15 +1309,23 @@
     openPopup(el.popupPdf);
   }
 
-  function updatePdfPreview() {
-    if (!currentProject) return;
-    const items = currentProject.items || [];
-    const options = {
+  function getPdfExportOptions() {
+    return {
       title: el.pdfTitleInput.value || 'MEASUREMENT SHEET',
       client: el.pdfClientInput.value || 'General',
       includeSketch: el.pdfIncludeSketch.checked,
-      includeSignature: el.pdfIncludeSign.checked
+      includeSignature: el.pdfIncludeSign.checked,
+      companyName: companyBranding.name || '',
+      companyContact: companyBranding.contact || '',
+      companyLogo: companyBranding.logo || null
     };
+  }
+
+  function updatePdfPreview() {
+    if (!currentProject) return;
+    saveBranding();
+    const items = currentProject.items || [];
+    const options = getPdfExportOptions();
 
     // Render into preview container
     el.pdfLivePreview.innerHTML = window.PDFGenerator.renderPrintDOM(
@@ -951,7 +1335,7 @@
       options
     );
 
-    // Also populate hidden #print-page-layout for native @media print
+    // Populate hidden #print-page-layout for native @media print
     el.printPageLayout.innerHTML = window.PDFGenerator.renderPrintDOM(
       currentProject,
       items,
@@ -962,29 +1346,74 @@
 
   function executePrint() {
     updatePdfPreview();
-    // Native print triggers OS / Browser PDF print dialog formatted via @media print
     window.print();
   }
 
   function downloadPdfFile() {
     if (!currentProject) return;
     const items = currentProject.items || [];
-    const options = {
-      title: el.pdfTitleInput.value || 'MEASUREMENT SPECIFICATION SHEET',
-      client: el.pdfClientInput.value || 'General',
-      includeSketch: el.pdfIncludeSketch.checked,
-      includeSignature: el.pdfIncludeSign.checked
-    };
+    const options = getPdfExportOptions();
     window.PDFGenerator.downloadPDF(currentProject, items, options);
     showToast('✓ PDF download started');
   }
 
-  function copyTextSummary() {
+  function downloadCsvFile() {
     if (!currentProject) return;
     const items = currentProject.items || [];
-    let text = `📐 ${currentProject.title.toUpperCase()}\n`;
+    window.PDFGenerator.downloadCSV(currentProject, items);
+    showToast('✓ CSV cut-list downloaded');
+  }
+
+  async function executeShareSheet() {
+    if (!currentProject) return;
+    updatePdfPreview();
+    const items = currentProject.items || [];
+    const options = getPdfExportOptions();
+    const pdfBlob = window.PDFGenerator.generatePDFBlob(currentProject, items, options);
+    const textSummary = generateTextSummary(currentProject);
+    const cleanTitle = (currentProject.title || 'Measurement_Sheet').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `${cleanTitle}.pdf`;
+
+    if (navigator.share) {
+      try {
+        const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+          await navigator.share({
+            title: currentProject.title,
+            text: textSummary,
+            files: [pdfFile]
+          });
+          showToast('✓ Shared via system sheet');
+          return;
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.warn('File share failed, falling back to text share:', err);
+      }
+
+      try {
+        await navigator.share({
+          title: currentProject.title,
+          text: textSummary
+        });
+        showToast('✓ Shared text summary');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    // Desktop or non-share fallback
+    copyTextSummary();
+    window.PDFGenerator.downloadPDF(currentProject, items, options);
+  }
+
+  function generateTextSummary(proj) {
+    const items = proj.items || [];
+    let text = `📐 ${proj.title.toUpperCase()}\n`;
     text += `Date: ${new Date().toLocaleDateString()}\n`;
-    if (currentProject.client) text += `Client: ${currentProject.client}\n`;
+    if (proj.client) text += `Client: ${proj.client}\n`;
+    if (companyBranding.name) text += `Contractor: ${companyBranding.name}\n`;
     text += `------------------------------------\n`;
 
     items.forEach((item, idx) => {
@@ -997,6 +1426,12 @@
 
     text += `------------------------------------\n`;
     text += `Total items: ${items.length}\n`;
+    return text;
+  }
+
+  function copyTextSummary() {
+    if (!currentProject) return;
+    const text = generateTextSummary(currentProject);
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
@@ -1018,10 +1453,11 @@
   }
 
   // ==========================================================================
-  // TEMPLATES (Modal)
+  // TEMPLATES (Starter Presets & Custom User Templates)
   // ==========================================================================
 
   function openTemplatesModal() {
+    renderCustomTemplates();
     openPopup(el.popupTemplates);
   }
 
@@ -1057,8 +1493,123 @@
     showToast(`✓ Loaded template: ${tmpl.title}`);
   }
 
+  function applyCustomTemplate(tmpl) {
+    if (!tmpl || !currentProject) return;
+    const append = el.checkAppendTemplate.checked;
+    if (!append) {
+      if (currentProject.items.length > 0 && !confirm(`Replace existing measurements with template "${tmpl.title}"?`)) {
+        return;
+      }
+      currentProject.items = [];
+    }
+
+    tmpl.items.forEach(item => {
+      currentProject.items.push({
+        id: 'm_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
+        label: item.label,
+        value: item.value || '0',
+        unit: item.unit || 'cm',
+        category: item.category || 'General',
+        notes: item.notes || '',
+        verified: false,
+        createdAt: new Date().toISOString()
+      });
+    });
+
+    currentProject.updatedAt = new Date().toISOString();
+    saveData();
+    renderAll();
+    closePopup(el.popupTemplates);
+    showToast(`✓ Applied custom template: ${tmpl.title}`);
+  }
+
+  function saveCurrentSheetAsTemplate() {
+    if (!currentProject || !currentProject.items || currentProject.items.length === 0) {
+      showToast('⚠️ Current sheet has no measurements to save as template');
+      return;
+    }
+
+    const defaultName = currentProject.title ? `${currentProject.title} Template` : 'Custom Template';
+    const name = window.prompt('Enter a name for this custom template:', defaultName);
+    if (!name || !name.trim()) return;
+
+    const newTemplate = {
+      id: 'cust_' + Date.now().toString(36),
+      title: name.trim(),
+      category: currentProject.category || 'Custom',
+      items: currentProject.items.map(i => ({
+        label: i.label,
+        value: '', // Blank value for fresh filling
+        unit: i.unit,
+        category: i.category,
+        notes: i.notes
+      }))
+    };
+
+    customTemplates.unshift(newTemplate);
+    saveCustomTemplates();
+    showToast(`✓ Saved custom template: ${newTemplate.title}`);
+  }
+
+  function renderCustomTemplates() {
+    if (!el.customTemplatesContainer) return;
+    el.customTemplatesContainer.innerHTML = '';
+
+    if (customTemplates.length === 0) {
+      el.customTemplatesContainer.innerHTML = `
+        <div style="font-size: 0.78rem; color: var(--text-muted); padding: 10px 12px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px dashed var(--border-color); text-align: center;">
+          No custom templates saved yet. Tap "+ Save Current Sheet" above to save your recurring setups.
+        </div>
+      `;
+      return;
+    }
+
+    customTemplates.forEach(tmpl => {
+      const card = document.createElement('div');
+      card.className = 'custom-template-card';
+      card.innerHTML = `
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${escapeHtml(tmpl.title)}
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+            ${tmpl.items.length} items &bull; ${escapeHtml(tmpl.category || 'Custom')}
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn btn-secondary" data-action="apply-custom" style="font-size: 0.74rem; padding: 4px 10px;">
+            Apply
+          </button>
+          <button type="button" class="custom-template-del-btn" data-action="delete-custom" title="Delete template">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      `;
+
+      card.querySelector('[data-action="apply-custom"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyCustomTemplate(tmpl);
+      });
+
+      card.querySelector('[data-action="delete-custom"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete template "${tmpl.title}"?`)) {
+          customTemplates = customTemplates.filter(t => t.id !== tmpl.id);
+          saveCustomTemplates();
+          showToast('Template deleted');
+        }
+      });
+
+      card.addEventListener('click', () => applyCustomTemplate(tmpl));
+      el.customTemplatesContainer.appendChild(card);
+    });
+  }
+
   // ==========================================================================
-  // UNIT CONVERTER & CALCULATOR (Modal)
+  // UNIT CONVERTER & PROJECT-WIDE CONVERSION (Modal)
   // ==========================================================================
 
   function initConverter() {
@@ -1067,7 +1618,6 @@
       const from = el.convFromUnit.value;
       const to = el.convToUnit.value;
 
-      // Base conversion to millimeters
       const toMm = {
         mm: 1,
         cm: 10,
@@ -1082,7 +1632,6 @@
       const rounded = Math.round(result * 1000) / 1000;
       el.convToVal.value = rounded;
 
-      // Fractional inches breakdown if target is inches
       if (to === 'in') {
         const whole = Math.floor(rounded);
         const frac = rounded - whole;
@@ -1092,7 +1641,6 @@
         } else if (sixteenths === 16) {
           el.fractionResult.textContent = `Exact: ${whole + 1}"`;
         } else {
-          // Simplify fraction
           let num = sixteenths;
           let den = 16;
           while (num % 2 === 0 && den % 2 === 0) {
@@ -1135,8 +1683,67 @@
     el.calcW.addEventListener('input', calculateGeometry);
     el.calcH.addEventListener('input', calculateGeometry);
 
+    if (el.btnBatchConvertUnits) {
+      el.btnBatchConvertUnits.addEventListener('click', () => {
+        const targetUnit = el.selectBatchTargetUnit.value;
+        batchConvertProjectUnits(targetUnit);
+      });
+    }
+
     convert();
     calculateGeometry();
+  }
+
+  function batchConvertProjectUnits(targetUnit) {
+    if (!currentProject || !currentProject.items || currentProject.items.length === 0) {
+      showToast('⚠️ Current sheet has no measurements to convert');
+      return;
+    }
+
+    const toMeters = {
+      mm: 0.001,
+      cm: 0.01,
+      m: 1.0,
+      in: 0.0254,
+      ft: 0.3048,
+      yd: 0.9144
+    };
+
+    const convertValuePart = (valStr, fromUnit, toUnit) => {
+      if (fromUnit === toUnit) return valStr;
+
+      if (valStr.includes('×') || valStr.includes('x') || valStr.includes('X')) {
+        return valStr.split(/[×xX]/)
+          .map(part => convertValuePart(part.trim(), fromUnit, toUnit))
+          .join(' × ');
+      }
+
+      const num = parseFractionOrDecimal(valStr);
+      if (isNaN(num) || num === 0) return valStr;
+
+      const meters = num * (toMeters[fromUnit] || 0.01);
+      const converted = meters / (toMeters[toUnit] || 0.01);
+
+      if (toUnit === 'mm') return String(Math.round(converted));
+      if (toUnit === 'cm') return String(Math.round(converted * 10) / 10);
+      if (toUnit === 'm') return String(Math.round(converted * 1000) / 1000);
+      if (toUnit === 'in' || toUnit === 'ft' || toUnit === 'yd') return String(Math.round(converted * 100) / 100);
+      return String(Math.round(converted * 100) / 100);
+    };
+
+    let convertedCount = 0;
+    currentProject.items.forEach(item => {
+      const from = (item.unit || 'cm').toLowerCase();
+      item.value = convertValuePart(item.value, from, targetUnit);
+      item.unit = targetUnit;
+      convertedCount++;
+    });
+
+    currentProject.updatedAt = new Date().toISOString();
+    saveData();
+    renderAll();
+    closePopup(el.popupConverter);
+    showToast(`✓ Converted ${convertedCount} items to ${targetUnit}`);
   }
 
   // ==========================================================================
@@ -1149,7 +1756,9 @@
     el.btnEmptyAdd.addEventListener('click', openAddMeasurementModal);
     
     el.btnOpenProjects.addEventListener('click', openProjectsModal);
-    el.btnOpenSketch.addEventListener('click', openSketchModal);
+    if (el.btnOpenSketch) {
+      el.btnOpenSketch.addEventListener('click', openSketchModal);
+    }
     el.btnBottomSketch.addEventListener('click', openSketchModal);
     
     el.btnOpenTemplates.addEventListener('click', openTemplatesModal);
@@ -1157,8 +1766,56 @@
     
     el.btnOpenConverter.addEventListener('click', () => openPopup(el.popupConverter));
     
-    el.btnOpenPdf.addEventListener('click', openPdfModal);
+    if (el.btnOpenPdf) {
+      el.btnOpenPdf.addEventListener('click', openPdfModal);
+    }
     el.btnBottomPdf.addEventListener('click', openPdfModal);
+
+    // Dimension Mode Tabs (1D, 2D, 3D)
+    if (el.dimModeTabs) {
+      el.dimModeTabs.querySelectorAll('.dim-mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => setDimMode(tab.dataset.dimMode));
+      });
+    }
+
+    // Composite inputs calculations
+    if (el.inputDimL) el.inputDimL.addEventListener('input', updateCompositeCalc);
+    if (el.inputDimW) el.inputDimW.addEventListener('input', updateCompositeCalc);
+    if (el.inputDimH) el.inputDimH.addEventListener('input', updateCompositeCalc);
+
+    // Save current sheet as custom template
+    if (el.btnSaveSheetAsTemplate) {
+      el.btnSaveSheetAsTemplate.addEventListener('click', saveCurrentSheetAsTemplate);
+    }
+
+    // Company Logo Upload
+    if (el.pdfLogoInput) {
+      el.pdfLogoInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            companyBranding.logo = ev.target.result;
+            renderLogoPreview();
+            saveBranding();
+            updatePdfPreview();
+            showToast('✓ Logo uploaded');
+          };
+          reader.readAsDataURL(file);
+        }
+        e.target.value = '';
+      });
+    }
+
+    if (el.btnClearLogo) {
+      el.btnClearLogo.addEventListener('click', () => {
+        companyBranding.logo = null;
+        renderLogoPreview();
+        saveBranding();
+        updatePdfPreview();
+        showToast('Logo removed');
+      });
+    }
 
     // Close buttons on all popups
     document.querySelectorAll('[data-close-popup]').forEach(btn => {
@@ -1179,74 +1836,63 @@
 
     // Category dropdown toggle inside search bar
     el.searchCatBtn.addEventListener('click', toggleCategoryDropdown);
-
-    // Close category dropdown on click outside
     document.addEventListener('click', (e) => {
-      if (el.searchCatDropdown && !el.searchCatDropdown.contains(e.target)) {
+      if (!el.searchBoxUnified.contains(e.target)) {
         closeCategoryDropdown();
       }
     });
 
-    // Keyboard navigation (ESC closes popup & dropdowns)
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeCategoryDropdown();
-        closeAllPopups();
-      }
-    });
-
-    // Measurement modal actions
-    el.btnSaveMeasurement.addEventListener('click', () => saveCurrentMeasurement(false));
-    el.btnSaveAndNext.addEventListener('click', () => saveCurrentMeasurement(true));
-    el.btnDeleteMeasurement.addEventListener('click', deleteCurrentMeasurement);
-
-    // Label suggestions chips
-    el.labelSuggestions.querySelectorAll('.sugg-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        el.inputItemLabel.value = chip.dataset.label;
-        el.inputItemValue.focus();
-      });
-    });
-
-    // Quick increment helpers
-    document.querySelectorAll('[data-inc]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const inc = parseFloat(btn.dataset.inc) || 0;
-        let curr = parseFloat(el.inputItemValue.value) || 0;
-        curr = Math.max(0, Math.round((curr + inc) * 100) / 100);
-        el.inputItemValue.value = curr;
-      });
-    });
-
-    // Quick fraction helpers
-    document.querySelectorAll('[data-frac]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const frac = btn.dataset.frac;
-        const current = el.inputItemValue.value.trim();
-        // If current is an integer, append fraction e.g. "42" + " 1/2"
-        if (/^\d+$/.test(current)) {
-          el.inputItemValue.value = current + frac;
-        } else {
-          el.inputItemValue.value = frac.trim();
-        }
-      });
-    });
-
-    // Search bar
+    // Search query input
     el.searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value.trim();
-      el.btnClearSearch.style.display = searchQuery ? 'block' : 'none';
+      el.btnClearSearch.classList.toggle('visible', searchQuery.length > 0);
       renderMeasurementList();
     });
 
     el.btnClearSearch.addEventListener('click', () => {
-      el.searchInput.value = '';
       searchQuery = '';
-      el.btnClearSearch.style.display = 'none';
+      el.searchInput.value = '';
+      el.btnClearSearch.classList.remove('visible');
       renderMeasurementList();
     });
 
-    // Create Project
+    // Measurement save buttons
+    el.btnSaveMeasurement.addEventListener('click', () => saveCurrentMeasurement(false));
+    el.btnSaveAndNext.addEventListener('click', () => saveCurrentMeasurement(true));
+    el.btnDeleteMeasurement.addEventListener('click', deleteCurrentMeasurement);
+
+    // Label quick suggestion chips
+    el.labelSuggestions.querySelectorAll('.sugg-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        el.inputItemLabel.value = chip.dataset.label;
+        if (activeDimMode === '1d') {
+          el.inputItemValue.focus();
+        } else {
+          el.inputDimL.focus();
+        }
+      });
+    });
+
+    // Quick numeric increment / fraction buttons
+    document.querySelectorAll('.quick-value-helpers button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inc = btn.dataset.inc;
+        const frac = btn.dataset.frac;
+        const current = el.inputItemValue.value.trim();
+
+        if (frac) {
+          el.inputItemValue.value = current ? `${current.replace(/\s*[¼½¾\d\/]+$/, '')}${frac}`.trim() : frac.trim();
+        } else if (inc) {
+          const delta = parseFloat(inc) || 0;
+          const val = parseFractionOrDecimal(current);
+          const base = isNaN(val) ? 0 : val;
+          const next = Math.max(0, Math.round((base + delta) * 10) / 10);
+          el.inputItemValue.value = next;
+        }
+      });
+    });
+
+    // Projects modal action
     el.btnCreateProject.addEventListener('click', () => {
       const name = el.inputNewProjectName.value.trim();
       if (!name) {
@@ -1258,7 +1904,14 @@
       closePopup(el.popupProjects);
     });
 
-    // Templates selection
+    el.inputNewProjectName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        el.btnCreateProject.click();
+      }
+    });
+
+    // Templates selection (starter presets)
     document.querySelectorAll('.template-card').forEach(card => {
       card.addEventListener('click', () => {
         const key = card.dataset.template;
@@ -1266,14 +1919,19 @@
       });
     });
 
-    // PDF options changes
+    // PDF options & branding changes
     el.pdfTitleInput.addEventListener('input', updatePdfPreview);
     el.pdfClientInput.addEventListener('input', updatePdfPreview);
+    if (el.pdfCompanyInput) el.pdfCompanyInput.addEventListener('input', updatePdfPreview);
+    if (el.pdfContactInput) el.pdfContactInput.addEventListener('input', updatePdfPreview);
     el.pdfIncludeSketch.addEventListener('change', updatePdfPreview);
     el.pdfIncludeSign.addEventListener('change', updatePdfPreview);
 
+    // Share & export actions
+    if (el.btnShareSheet) el.btnShareSheet.addEventListener('click', executeShareSheet);
     el.btnExecutePrint.addEventListener('click', executePrint);
     el.btnDownloadPdf.addEventListener('click', downloadPdfFile);
+    if (el.btnDownloadCsv) el.btnDownloadCsv.addEventListener('click', downloadCsvFile);
     el.btnCopyTextSummary.addEventListener('click', copyTextSummary);
 
     // Export / Import Backup JSON
@@ -1289,7 +1947,13 @@
   // ==========================================================================
 
   function exportBackup() {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(projects, null, 2));
+    const data = {
+      projects,
+      customTemplates,
+      companyBranding,
+      exportedAt: new Date().toISOString()
+    };
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute('href', dataStr);
     dlAnchor.setAttribute('download', `sizenotes-backup-${new Date().toISOString().slice(0,10)}.json`);
@@ -1308,15 +1972,30 @@
       try {
         const imported = JSON.parse(event.target.result);
         if (Array.isArray(imported)) {
+          // Legacy format: array of projects
           projects = imported;
           currentProject = projects[0] || null;
-          saveData();
-          renderAll();
-          renderProjectList();
-          showToast('✓ Backup restored successfully');
+        } else if (imported && Array.isArray(imported.projects)) {
+          // New format
+          projects = imported.projects;
+          currentProject = projects[0] || null;
+          if (Array.isArray(imported.customTemplates)) {
+            customTemplates = imported.customTemplates;
+            saveCustomTemplates();
+          }
+          if (imported.companyBranding) {
+            companyBranding = imported.companyBranding;
+            saveBranding();
+          }
         } else {
           showToast('⚠️ Invalid backup file format');
+          return;
         }
+
+        saveData();
+        renderAll();
+        renderProjectList();
+        showToast('✓ Backup restored successfully');
       } catch (err) {
         showToast('⚠️ Failed to parse backup file');
       }
@@ -1326,13 +2005,26 @@
   }
 
   // ==========================================================================
-  // TOAST NOTIFICATIONS
+  // TOAST NOTIFICATIONS (With Undo Support)
   // ==========================================================================
 
-  function showToast(message, duration = 2200) {
+  function showToast(message, duration = 2400, action = null) {
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
+
+    if (action && action.actionText && action.onAction) {
+      const actionBtn = document.createElement('button');
+      actionBtn.type = 'button';
+      actionBtn.className = 'toast-action-btn';
+      actionBtn.textContent = action.actionText;
+      actionBtn.addEventListener('click', () => {
+        action.onAction();
+        toast.remove();
+      });
+      toast.appendChild(actionBtn);
+    }
+
     el.toastContainer.appendChild(toast);
 
     setTimeout(() => {
