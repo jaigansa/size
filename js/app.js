@@ -84,6 +84,22 @@
     }
   };
 
+  // Standard Default Category List
+  const DEFAULT_CATEGORIES = [
+    'General',
+    'Living Room',
+    'Bedroom',
+    'Kitchen',
+    'Bathroom',
+    'Windows & Doors',
+    'Cabinetry',
+    'Framing',
+    'Hardware',
+    'Electrical',
+    'Plumbing',
+    'Exterior'
+  ];
+
   // --- State ---
   let projects = [];
   let currentProject = null;
@@ -102,6 +118,7 @@
     displayProjectTitle: document.getElementById('displayProjectTitle'),
     displayProjectCategory: document.getElementById('displayProjectCategory'),
     btnOpenProjects: document.getElementById('btnOpenProjects'),
+    btnHeaderRenameSheet: document.getElementById('btnHeaderRenameSheet'),
     btnOpenTheme: document.getElementById('btnOpenTheme'),
     btnOpenSketch: document.getElementById('btnOpenSketch'),
     btnOpenTemplates: document.getElementById('btnOpenTemplates'),
@@ -162,6 +179,8 @@
     btnSaveAndNext: document.getElementById('btnSaveAndNext'),
     btnDeleteMeasurement: document.getElementById('btnDeleteMeasurement'),
     labelSuggestions: document.getElementById('labelSuggestions'),
+    categorySuggestions: document.getElementById('categorySuggestions'),
+    categoryList: document.getElementById('categoryList'),
 
     // Projects Modal
     popupProjects: document.getElementById('popupProjects'),
@@ -200,6 +219,8 @@
     btnClearLogo: document.getElementById('btnClearLogo'),
     pdfIncludeSketch: document.getElementById('pdfIncludeSketch'),
     pdfIncludeSign: document.getElementById('pdfIncludeSign'),
+    pdfCompactView: document.getElementById('pdfCompactView'),
+    brandingDetails: document.getElementById('brandingDetails'),
     pdfLivePreview: document.getElementById('pdfLivePreview'),
     btnShareSheet: document.getElementById('btnShareSheet'),
     btnExecutePrint: document.getElementById('btnExecutePrint'),
@@ -577,43 +598,47 @@
     if (!currentProject) return;
     const items = currentProject.items || [];
 
-    // Tally item counts per category
+    // Tally item counts per category (including standard default categories)
     const catCounts = { ALL: items.length };
+    DEFAULT_CATEGORIES.forEach(cat => {
+      catCounts[cat] = 0;
+    });
     items.forEach(item => {
       const cat = item.category || 'General';
       catCounts[cat] = (catCounts[cat] || 0) + 1;
     });
 
-    // If current filter category no longer exists, reset to ALL
-    if (currentFilterCategory !== 'ALL' && !catCounts[currentFilterCategory]) {
+    // If current filter category no longer exists in available categories, reset to ALL
+    if (currentFilterCategory !== 'ALL' && !(currentFilterCategory in catCounts)) {
       currentFilterCategory = 'ALL';
     }
 
     el.searchCatLabel.textContent = currentFilterCategory === 'ALL' ? 'All' : currentFilterCategory;
+    el.searchCatBtn.classList.toggle('has-filter', currentFilterCategory !== 'ALL');
 
     // Build Menu Items
     const categories = Object.keys(catCounts).filter(c => c !== 'ALL').sort();
     let menuHtml = `
-      <div class="search-cat-item ${currentFilterCategory === 'ALL' ? 'active' : ''}" data-cat="ALL">
-        <span class="search-cat-name">All Categories</span>
-        <span class="search-cat-count">${catCounts.ALL || 0}</span>
-      </div>
+      <button type="button" class="cat-menu-item search-cat-item ${currentFilterCategory === 'ALL' ? 'active' : ''}" data-cat="ALL">
+        <span class="cat-menu-name search-cat-name">All Categories</span>
+        <span class="cat-menu-count search-cat-count">${catCounts.ALL || 0}</span>
+      </button>
     `;
 
     categories.forEach(cat => {
       const isSelected = currentFilterCategory === cat;
       menuHtml += `
-        <div class="search-cat-item ${isSelected ? 'active' : ''}" data-cat="${escapeHtml(cat)}">
-          <span class="search-cat-name">${escapeHtml(cat)}</span>
-          <span class="search-cat-count">${catCounts[cat]}</span>
-        </div>
+        <button type="button" class="cat-menu-item search-cat-item ${isSelected ? 'active' : ''}" data-cat="${escapeHtml(cat)}">
+          <span class="cat-menu-name search-cat-name">${escapeHtml(cat)}</span>
+          <span class="cat-menu-count search-cat-count">${catCounts[cat]}</span>
+        </button>
       `;
     });
 
     el.searchCatMenu.innerHTML = menuHtml;
 
     // Attach click listeners to menu items
-    el.searchCatMenu.querySelectorAll('.search-cat-item').forEach(itemEl => {
+    el.searchCatMenu.querySelectorAll('.cat-menu-item, .search-cat-item').forEach(itemEl => {
       itemEl.addEventListener('click', (e) => {
         e.stopPropagation();
         const selectedCat = itemEl.dataset.cat;
@@ -626,8 +651,11 @@
   }
 
   function toggleCategoryDropdown(e) {
-    e.stopPropagation();
-    const isOpen = el.searchBoxUnified.classList.contains('dropdown-open');
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const isOpen = el.searchCatDropdown.classList.contains('open') || el.searchBoxUnified.classList.contains('dropdown-open');
     if (isOpen) {
       closeCategoryDropdown();
     } else {
@@ -636,11 +664,13 @@
   }
 
   function openCategoryDropdown() {
+    el.searchCatDropdown.classList.add('open');
     el.searchBoxUnified.classList.add('dropdown-open');
     el.searchCatBtn.setAttribute('aria-expanded', 'true');
   }
 
   function closeCategoryDropdown() {
+    el.searchCatDropdown.classList.remove('open');
     el.searchBoxUnified.classList.remove('dropdown-open');
     el.searchCatBtn.setAttribute('aria-expanded', 'false');
   }
@@ -883,6 +913,43 @@
     }
   }
 
+  function renderCategorySuggestions() {
+    if (!el.categorySuggestions) return;
+    const currentVal = (el.inputItemCategory ? el.inputItemCategory.value.trim() : '').toLowerCase();
+
+    // Combine standard default categories with any existing categories in the current sheet
+    const catSet = new Set(DEFAULT_CATEGORIES);
+    if (currentProject && currentProject.items) {
+      currentProject.items.forEach(it => {
+        if (it.category && it.category.trim()) {
+          catSet.add(it.category.trim());
+        }
+      });
+    }
+    const allCats = Array.from(catSet);
+
+    // Update datalist so keyboard typing gets autocomplete
+    if (el.categoryList) {
+      el.categoryList.innerHTML = allCats.map(cat => `<option value="${escapeHtml(cat)}">`).join('');
+    }
+
+    // Render quick suggestion chips
+    el.categorySuggestions.innerHTML = allCats.map(cat => {
+      const isMatched = currentVal === cat.toLowerCase();
+      return `<button type="button" class="sugg-chip ${isMatched ? 'active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+    }).join('');
+
+    // Wire click on each suggestion chip
+    el.categorySuggestions.querySelectorAll('.sugg-chip').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const chosen = btn.dataset.cat;
+        el.inputItemCategory.value = chosen;
+        renderCategorySuggestions();
+      });
+    });
+  }
+
   function openAddMeasurementModal() {
     activeEditingItemId = null;
     el.measurementModalTitle.querySelector('span').textContent = 'Add Measurement';
@@ -901,14 +968,21 @@
 
     // Retain last used unit and category for quick consecutive note taking
     const lastItem = currentProject.items && currentProject.items[currentProject.items.length - 1];
-    if (lastItem) {
-      el.selectItemUnit.value = lastItem.unit || 'cm';
-      el.inputItemCategory.value = lastItem.category || '';
+    if (currentFilterCategory !== 'ALL') {
+      el.inputItemCategory.value = currentFilterCategory;
+    } else if (lastItem && lastItem.category) {
+      el.inputItemCategory.value = lastItem.category;
     } else {
-      el.selectItemUnit.value = 'cm';
       el.inputItemCategory.value = 'General';
     }
 
+    if (lastItem) {
+      el.selectItemUnit.value = lastItem.unit || 'cm';
+    } else {
+      el.selectItemUnit.value = 'cm';
+    }
+
+    renderCategorySuggestions();
     openPopup(el.popupMeasurement);
   }
 
@@ -945,6 +1019,7 @@
       el.inputItemValue.value = val;
     }
 
+    renderCategorySuggestions();
     openPopup(el.popupMeasurement);
   }
 
@@ -1093,13 +1168,13 @@
   // PROJECT / SHEET MANAGER (Modal)
   // ==========================================================================
 
-  function openProjectsModal() {
-    renderProjectList();
+  function openProjectsModal(editingProjectId = null) {
+    renderProjectList(editingProjectId);
     el.inputNewProjectName.value = '';
     openPopup(el.popupProjects);
   }
 
-  function renderProjectList() {
+  function renderProjectList(editingProjectId = null) {
     el.projectListContainer.innerHTML = '';
     const countBadge = document.getElementById('sheetsCountBadge');
     if (countBadge) {
@@ -1117,44 +1192,89 @@
 
     projects.forEach(proj => {
       const isCurrent = currentProject && (proj.id === currentProject.id);
+      const isEditing = editingProjectId && (proj.id === editingProjectId);
       const card = document.createElement('div');
-      card.className = `project-item-card ${isCurrent ? 'active' : ''}`;
+      card.className = `project-item-card ${isCurrent ? 'active' : ''} ${isEditing ? 'editing' : ''}`;
       
       const itemCount = (proj.items || []).length;
       const dateStr = proj.updatedAt ? new Date(proj.updatedAt).toLocaleDateString() : 'Recent';
 
-      card.innerHTML = `
-        <div class="project-card-info">
-          <div class="project-card-title-row">
-            <span class="project-card-title">${escapeHtml(proj.title)}</span>
-            ${isCurrent ? '<span class="active-sheet-badge">✓ Active</span>' : ''}
+      if (isEditing) {
+        card.innerHTML = `
+          <div class="project-card-edit-mode">
+            <div class="edit-sheet-header-label">
+              <span style="font-size: 0.74rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.05em;">Rename Sheet</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Press Enter to save</span>
+            </div>
+            <div class="project-rename-input-row">
+              <input type="text" class="form-input project-rename-input" id="inputRename_${proj.id}" value="${escapeHtml(proj.title)}" autocomplete="off" spellcheck="false">
+              <button type="button" class="btn btn-primary btn-sm" data-action="save-rename" data-id="${proj.id}" title="Save Name">Save</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-action="cancel-rename" title="Cancel">Cancel</button>
+            </div>
           </div>
-          <div class="project-card-meta">
-            <span class="project-meta-pill">${itemCount} item${itemCount === 1 ? '' : 's'}</span>
-            <span class="project-meta-dot">&bull;</span>
-            <span>${escapeHtml(proj.category || 'General')}</span>
-            <span class="project-meta-dot">&bull;</span>
-            <span>${dateStr}</span>
+        `;
+      } else {
+        card.innerHTML = `
+          <div class="project-card-info">
+            <div class="project-card-title-row">
+              <span class="project-card-title">${escapeHtml(proj.title)}</span>
+              ${isCurrent ? '<span class="active-sheet-badge">✓ Active</span>' : ''}
+            </div>
+            <div class="project-card-meta">
+              <span class="project-meta-pill">${itemCount} item${itemCount === 1 ? '' : 's'}</span>
+              <span class="project-meta-dot">&bull;</span>
+              <span>${escapeHtml(proj.category || 'General')}</span>
+              <span class="project-meta-dot">&bull;</span>
+              <span>${dateStr}</span>
+            </div>
           </div>
-        </div>
-        <div class="project-card-actions">
-          <button type="button" class="proj-action-btn" data-action="duplicate" title="Duplicate Sheet" aria-label="Duplicate Sheet">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-          </button>
-          ${projects.length > 1 ? `
-          <button type="button" class="proj-action-btn delete" data-action="delete" title="Delete Sheet" aria-label="Delete Sheet">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>` : ''}
-        </div>
-      `;
+          <div class="project-card-actions">
+            <button type="button" class="proj-action-btn edit" data-action="rename" title="Rename Sheet" aria-label="Rename Sheet">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button type="button" class="proj-action-btn" data-action="duplicate" title="Duplicate Sheet" aria-label="Duplicate Sheet">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+            ${projects.length > 1 ? `
+            <button type="button" class="proj-action-btn delete" data-action="delete" title="Delete Sheet" aria-label="Delete Sheet">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>` : ''}
+          </div>
+        `;
+      }
 
       card.addEventListener('click', (e) => {
+        const saveBtn = e.target.closest('[data-action="save-rename"]');
+        if (saveBtn) {
+          e.stopPropagation();
+          const renameInput = card.querySelector(`#inputRename_${proj.id}`);
+          saveProjectRename(proj.id, renameInput ? renameInput.value : '');
+          return;
+        }
+        const cancelBtn = e.target.closest('[data-action="cancel-rename"]');
+        if (cancelBtn) {
+          e.stopPropagation();
+          renderProjectList();
+          return;
+        }
+        if (e.target.closest('.project-rename-input')) {
+          e.stopPropagation();
+          return;
+        }
+        if (e.target.closest('[data-action="rename"]')) {
+          e.stopPropagation();
+          renderProjectList(proj.id);
+          return;
+        }
         if (e.target.closest('[data-action="duplicate"]')) {
           e.stopPropagation();
           duplicateProject(proj.id);
@@ -1165,11 +1285,57 @@
           deleteProject(proj.id);
           return;
         }
-        switchActiveProject(proj.id);
+        if (!isEditing) {
+          switchActiveProject(proj.id);
+        }
       });
 
       el.projectListContainer.appendChild(card);
+
+      if (isEditing) {
+        const renameInput = card.querySelector(`#inputRename_${proj.id}`);
+        if (renameInput) {
+          setTimeout(() => {
+            renameInput.focus();
+            renameInput.select();
+          }, 40);
+          renameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              saveProjectRename(proj.id, renameInput.value);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              renderProjectList();
+            }
+          });
+        }
+      }
     });
+  }
+
+  function saveProjectRename(projectId, newName) {
+    const trimmed = (newName || '').trim();
+    if (!trimmed) {
+      showToast('⚠️ Sheet name cannot be empty');
+      return;
+    }
+    const target = projects.find(p => p.id === projectId);
+    if (!target) return;
+
+    target.title = trimmed;
+    target.updatedAt = new Date().toISOString();
+
+    if (currentProject && currentProject.id === projectId) {
+      currentProject.title = trimmed;
+      if (el.displayProjectTitle) {
+        el.displayProjectTitle.textContent = trimmed;
+      }
+    }
+
+    saveData();
+    renderProjectList();
+    renderHeaderAndStats();
+    showToast(`✓ Renamed sheet: ${trimmed}`);
   }
 
   function switchActiveProject(projectId) {
@@ -1344,6 +1510,9 @@
     if (!currentProject) return;
     el.pdfTitleInput.value = currentProject.title ? `MEASUREMENT SHEET: ${currentProject.title.toUpperCase()}` : 'MEASUREMENT SPECIFICATION SHEET';
     el.pdfClientInput.value = currentProject.client || '';
+    if (el.brandingDetails) {
+      el.brandingDetails.open = !!(companyBranding.name || companyBranding.contact || companyBranding.logo);
+    }
     updatePdfPreview();
     openPopup(el.popupPdf);
   }
@@ -1352,8 +1521,9 @@
     return {
       title: el.pdfTitleInput.value || 'MEASUREMENT SHEET',
       client: el.pdfClientInput.value || 'General',
-      includeSketch: el.pdfIncludeSketch.checked,
-      includeSignature: el.pdfIncludeSign.checked,
+      includeSketch: el.pdfIncludeSketch ? el.pdfIncludeSketch.checked : true,
+      includeSignature: el.pdfIncludeSign ? el.pdfIncludeSign.checked : true,
+      compact: el.pdfCompactView ? el.pdfCompactView.checked : true,
       companyName: companyBranding.name || '',
       companyContact: companyBranding.contact || '',
       companyLogo: companyBranding.logo || null
@@ -1794,7 +1964,14 @@
     el.btnOpenAddMeasurement.addEventListener('click', openAddMeasurementModal);
     el.btnEmptyAdd.addEventListener('click', openAddMeasurementModal);
     
-    el.btnOpenProjects.addEventListener('click', openProjectsModal);
+    el.btnOpenProjects.addEventListener('click', () => openProjectsModal());
+    if (el.btnHeaderRenameSheet) {
+      el.btnHeaderRenameSheet.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!currentProject) return;
+        openProjectsModal(currentProject.id);
+      });
+    }
     if (el.btnOpenSketch) {
       el.btnOpenSketch.addEventListener('click', openSketchModal);
     }
@@ -1881,6 +2058,11 @@
         closeCategoryDropdown();
       }
     });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeCategoryDropdown();
+      }
+    });
 
     // Search query input
     el.searchInput.addEventListener('input', (e) => {
@@ -1912,6 +2094,13 @@
         }
       });
     });
+
+    // Category input auto-updates suggestion chip highlight
+    if (el.inputItemCategory) {
+      el.inputItemCategory.addEventListener('input', () => {
+        renderCategorySuggestions();
+      });
+    }
 
     // Track active/focused input among 1D, L, W, H for helpers & keyboard
     let lastActiveDimInput = el.inputItemValue;
@@ -2022,6 +2211,7 @@
     if (el.pdfContactInput) el.pdfContactInput.addEventListener('input', updatePdfPreview);
     el.pdfIncludeSketch.addEventListener('change', updatePdfPreview);
     el.pdfIncludeSign.addEventListener('change', updatePdfPreview);
+    if (el.pdfCompactView) el.pdfCompactView.addEventListener('change', updatePdfPreview);
 
     // Share & export actions
     if (el.btnShareSheet) el.btnShareSheet.addEventListener('click', executeShareSheet);

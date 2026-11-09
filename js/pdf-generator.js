@@ -12,12 +12,12 @@ const PDFGenerator = {
    */
   renderPrintDOM(project, items, sketchDataUrl, options = {}) {
     const defaultOptions = {
-      title: project.title || 'Measurement Specification Sheet',
+      title: project.title ? `MEASUREMENT SHEET: ${project.title.toUpperCase()}` : 'MEASUREMENT SPECIFICATION SHEET',
       client: project.client || 'General',
       date: project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : new Date().toLocaleDateString(),
       includeSketch: !!sketchDataUrl,
       includeSignature: true,
-      compact: false,
+      compact: true,
       companyName: '',
       companyContact: '',
       companyLogo: null
@@ -39,18 +39,18 @@ const PDFGenerator = {
           <td style="text-align: center; color: #64748b; font-weight: 600;">${num}</td>
           <td>
             <strong>${this.escapeHtml(item.label)}</strong>
-            ${verifiedTag ? '<span style="color:#10b981;font-size:7pt;margin-left:4px;">VERIFIED</span>' : ''}
+            ${verifiedTag ? '<span style="color:#10b981;font-size:6.5pt;margin-left:4px;font-weight:700;">VERIFIED</span>' : ''}
           </td>
           <td class="print-val-cell">${this.escapeHtml(item.value)}</td>
           <td class="print-unit-cell">${this.escapeHtml(item.unit || '')}</td>
           <td style="color: #475569;">${this.escapeHtml(item.category || '—')}</td>
-          <td style="color: #64748b; font-size: 7.5pt;">${this.escapeHtml(item.notes || '—')}</td>
+          <td style="color: #64748b; font-size: 7pt;">${this.escapeHtml(item.notes || '—')}</td>
         </tr>
       `;
     });
 
     if (items.length === 0) {
-      rowsHtml = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">No measurement records added yet</td></tr>`;
+      rowsHtml = `<tr><td colspan="6" style="text-align:center;padding:16px;color:#94a3b8;">No measurement records added yet</td></tr>`;
     }
 
     const sketchHtml = (opts.includeSketch && sketchDataUrl) ? `
@@ -60,10 +60,11 @@ const PDFGenerator = {
       </div>
     ` : '';
 
-    const companyHeaderHtml = (opts.companyName || opts.companyLogo) ? `
+    const hasCompany = !!(opts.companyName || opts.companyLogo);
+    const companyHeaderHtml = hasCompany ? `
       <div class="print-company-bar">
         ${opts.companyLogo ? `<img class="print-company-logo" src="${opts.companyLogo}" alt="Logo" />` : ''}
-        <div>
+        <div class="print-company-text">
           ${opts.companyName ? `<div class="print-company-name">${this.escapeHtml(opts.companyName)}</div>` : ''}
           ${opts.companyContact ? `<div class="print-company-contact">${this.escapeHtml(opts.companyContact)}</div>` : ''}
         </div>
@@ -71,32 +72,34 @@ const PDFGenerator = {
     ` : '';
 
     const html = `
-      <div class="print-sheet-frame">
+      <div class="print-sheet-frame ${opts.compact ? 'is-compact' : ''}">
         ${companyHeaderHtml}
 
         <div class="print-page-header">
-          <div>
+          <div class="print-header-main">
             <div class="print-main-title">${this.escapeHtml(opts.title)}</div>
-            <div class="print-sub-title">Project: <strong>${this.escapeHtml(project.title)}</strong> &bull; Ref: ${this.escapeHtml(project.id.slice(-6).toUpperCase())}</div>
+            <div class="print-sub-title">Project: <strong>${this.escapeHtml(project.title)}</strong> &bull; Ref: <code>#${this.escapeHtml(project.id.slice(-6).toUpperCase())}</code></div>
           </div>
-          <div style="text-align: right;">
-            <div style="font-size: 8pt; font-weight: 700; color: #0284c7;">SIZENOTE REPORT</div>
-            <div style="font-size: 7.5pt; color: #64748b;">Generated: ${opts.date}</div>
+          <div class="print-header-meta">
+            <div class="print-report-tag">SIZENOTE REPORT</div>
+            <div class="print-date-tag">Date: ${opts.date}</div>
           </div>
         </div>
 
         <div class="print-meta-grid">
           <div class="print-meta-item">
             <div class="print-meta-label">Client / Location</div>
-            <div class="print-meta-val">${this.escapeHtml(opts.client || 'N/A')}</div>
+            <div class="print-meta-val">${this.escapeHtml(opts.client || 'General')}</div>
           </div>
           <div class="print-meta-item">
-            <div class="print-meta-label">Total Items</div>
-            <div class="print-meta-val">${totalItems} Recorded</div>
+            <div class="print-meta-label">Total Records</div>
+            <div class="print-meta-val">${totalItems} Items</div>
           </div>
           <div class="print-meta-item">
             <div class="print-meta-label">Verification</div>
-            <div class="print-meta-val">${verifiedCount} / ${totalItems} Checked</div>
+            <div class="print-meta-val ${verifiedCount === totalItems && totalItems > 0 ? 'verified-all' : ''}">
+              ${verifiedCount} / ${totalItems} Checked${verifiedCount === totalItems && totalItems > 0 ? ' ✓' : ''}
+            </div>
           </div>
           <div class="print-meta-item">
             <div class="print-meta-label">Categories</div>
@@ -109,11 +112,11 @@ const PDFGenerator = {
             <table class="print-table">
               <thead>
                 <tr>
-                  <th style="width: 32px; text-align: center;">#</th>
+                  <th style="width: 28px; text-align: center;">#</th>
                   <th>Item / Dimension</th>
-                  <th style="width: 80px; text-align: right;">Value</th>
-                  <th style="width: 45px; text-align: center;">Unit</th>
-                  <th style="width: 80px;">Category</th>
+                  <th style="width: 75px; text-align: right;">Value</th>
+                  <th style="width: 42px; text-align: center;">Unit</th>
+                  <th style="width: 75px;">Category</th>
                   <th>Notes / Specs</th>
                 </tr>
               </thead>
@@ -128,7 +131,7 @@ const PDFGenerator = {
         <div class="print-summary-box">
           <div class="print-totals">
             <div><strong>Notes:</strong> All measurements subject to on-site tolerances. Confirm critical clear-spaces prior to cutting.</div>
-            <div style="color: #64748b; font-size: 7pt; margin-top: 2px;">Units referenced: ${[...new Set(items.map(i => i.unit))].join(', ') || 'N/A'}</div>
+            <div style="color: #64748b; font-size: 6.8pt; margin-top: 1px;">Units referenced: ${[...new Set(items.map(i => i.unit))].join(', ') || 'N/A'}</div>
           </div>
           ${opts.includeSignature ? `
           <div class="print-signature-block">
@@ -138,7 +141,7 @@ const PDFGenerator = {
         </div>
 
         <div class="print-footer-tag">
-          Document ID: SZN-${project.id} &bull; SizeNotes Single-Screen Measurement System
+          Doc ID: SZN-${project.id.slice(0, 8)} &bull; SizeNotes Single-Page Measurement System
         </div>
       </div>
     `;
@@ -173,57 +176,66 @@ const PDFGenerator = {
 
     lines.push('q');
 
+    const isCompact = options.compact !== false;
+
     // Outer architectural sheet border frame
     const framePad = 16;
     lines.push(`0.08 0.12 0.18 RG 1.2 w ${framePad} ${framePad} ${width - framePad * 2} ${height - framePad * 2} re s`);
 
-    let currentTop = height - 40;
+    let currentTop = height - (isCompact ? 36 : 40);
 
     // Optional Company Branding Line
     if (options.companyName) {
       lines.push(`0.05 0.09 0.16 rg`);
-      lines.push(`BT /F2 11 Tf ${margin} ${currentTop} Td (${sanitize(options.companyName.toUpperCase())}) Tj ET`);
+      lines.push(`BT /F2 10 Tf ${margin} ${currentTop} Td (${sanitize(options.companyName.toUpperCase())}) Tj ET`);
       if (options.companyContact) {
         lines.push(`0.4 0.45 0.5 rg`);
         lines.push(`BT /F1 8 Tf ${width - margin - 200} ${currentTop} Td (${sanitize(options.companyContact)}) Tj ET`);
       }
-      currentTop -= 22;
+      currentTop -= 18;
     }
 
     // Top banner border
     lines.push(`0.05 0.09 0.16 rg`);
-    lines.push(`${margin} ${currentTop - 12} ${width - margin * 2} 3 re f`);
+    lines.push(`${margin} ${currentTop - 10} ${width - margin * 2} 2.5 re f`);
     
     // Title
-    lines.push(`BT /F2 15 Tf ${margin} ${currentTop} Td (${sanitize(options.title || 'MEASUREMENT SPECIFICATION SHEET')}) Tj ET`);
-    lines.push(`BT /F1 9 Tf ${margin} ${currentTop - 18} Td (Project: ${sanitize(project.title)} | Ref: ${sanitize(project.id.slice(-6).toUpperCase())}) Tj ET`);
+    const titleSize = isCompact ? 13 : 15;
+    lines.push(`BT /F2 ${titleSize} Tf ${margin} ${currentTop} Td (${sanitize(options.title || 'MEASUREMENT SPECIFICATION SHEET')}) Tj ET`);
+    lines.push(`BT /F1 8.5 Tf ${margin} ${currentTop - (isCompact ? 14 : 18)} Td (Project: ${sanitize(project.title)} | Ref: #${sanitize(project.id.slice(-6).toUpperCase())}) Tj ET`);
     
     const dateStr = options.date || new Date().toLocaleDateString();
-    lines.push(`BT /F2 9 Tf ${width - margin - 120} ${currentTop} Td (DATE: ${sanitize(dateStr)}) Tj ET`);
-    lines.push(`BT /F1 8 Tf ${width - margin - 120} ${currentTop - 14} Td (Client: ${sanitize(project.client || 'Standard')}) Tj ET`);
+    lines.push(`BT /F2 8.5 Tf ${width - margin - 120} ${currentTop} Td (DATE: ${sanitize(dateStr)}) Tj ET`);
+    lines.push(`BT /F1 8 Tf ${width - margin - 120} ${currentTop - 12} Td (Client: ${sanitize(options.client || project.client || 'General')}) Tj ET`);
 
-    // Meta box
-    const metaY = currentTop - 50;
-    lines.push(`0.95 0.96 0.98 rg ${margin} ${metaY} ${width - margin * 2} 24 re f`);
-    lines.push(`0.8 0.84 0.88 RG 1 w ${margin} ${metaY} ${width - margin * 2} 24 re s`);
-    lines.push(`BT /F2 8 Tf ${margin + 10} ${metaY + 8} Td (TOTAL ITEMS: ${items.length}) Tj ET`);
+    // Meta box (Stats section)
+    const metaBoxHeight = isCompact ? 18 : 24;
+    const metaY = currentTop - (isCompact ? 36 : 50);
+    lines.push(`0.95 0.96 0.98 rg ${margin} ${metaY} ${width - margin * 2} ${metaBoxHeight} re f`);
+    lines.push(`0.8 0.84 0.88 RG 1 w ${margin} ${metaY} ${width - margin * 2} ${metaBoxHeight} re s`);
+    const metaTextOffset = isCompact ? 5 : 8;
+    lines.push(`BT /F2 7.5 Tf ${margin + 10} ${metaY + metaTextOffset} Td (TOTAL: ${items.length} Items) Tj ET`);
     const verified = items.filter(i => i.verified).length;
-    lines.push(`BT /F2 8 Tf ${margin + 160} ${metaY + 8} Td (STATUS: ${verified}/${items.length} Checked) Tj ET`);
-    lines.push(`BT /F2 8 Tf ${margin + 330} ${metaY + 8} Td (ID: SZN-${sanitize(project.id.slice(0, 8))}) Tj ET`);
+    lines.push(`BT /F2 7.5 Tf ${margin + 140} ${metaY + metaTextOffset} Td (STATUS: ${verified}/${items.length} Checked) Tj ET`);
+    const categoriesCount = [...new Set(items.map(i => i.category || 'General'))].length;
+    lines.push(`BT /F2 7.5 Tf ${margin + 280} ${metaY + metaTextOffset} Td (GROUPS: ${categoriesCount}) Tj ET`);
+    lines.push(`BT /F2 7.5 Tf ${margin + 380} ${metaY + metaTextOffset} Td (ID: SZN-${sanitize(project.id.slice(0, 8))}) Tj ET`);
 
     // Table Header
-    let tableY = metaY - 24;
-    lines.push(`0.08 0.12 0.20 rg ${margin} ${tableY - 18} ${width - margin * 2} 18 re f`);
+    const tableHeaderHeight = isCompact ? 16 : 18;
+    let tableY = metaY - (isCompact ? 18 : 24);
+    lines.push(`0.08 0.12 0.20 rg ${margin} ${tableY - tableHeaderHeight} ${width - margin * 2} ${tableHeaderHeight} re f`);
     lines.push(`1 1 1 rg`); // White text
-    lines.push(`BT /F2 8 Tf ${margin + 8} ${tableY - 13} Td (#) Tj ET`);
-    lines.push(`BT /F2 8 Tf ${margin + 30} ${tableY - 13} Td (DIMENSION / ITEM) Tj ET`);
-    lines.push(`BT /F2 8 Tf ${margin + 240} ${tableY - 13} Td (VALUE) Tj ET`);
-    lines.push(`BT /F2 8 Tf ${margin + 300} ${tableY - 13} Td (UNIT) Tj ET`);
-    lines.push(`BT /F2 8 Tf ${margin + 350} ${tableY - 13} Td (CATEGORY) Tj ET`);
-    lines.push(`BT /F2 8 Tf ${margin + 430} ${tableY - 13} Td (NOTES) Tj ET`);
+    const thTextY = tableY - (isCompact ? 11 : 13);
+    lines.push(`BT /F2 7.5 Tf ${margin + 8} ${thTextY} Td (#) Tj ET`);
+    lines.push(`BT /F2 7.5 Tf ${margin + 28} ${thTextY} Td (DIMENSION / ITEM) Tj ET`);
+    lines.push(`BT /F2 7.5 Tf ${margin + 240} ${thTextY} Td (VALUE) Tj ET`);
+    lines.push(`BT /F2 7.5 Tf ${margin + 300} ${thTextY} Td (UNIT) Tj ET`);
+    lines.push(`BT /F2 7.5 Tf ${margin + 345} ${thTextY} Td (CATEGORY) Tj ET`);
+    lines.push(`BT /F2 7.5 Tf ${margin + 425} ${thTextY} Td (NOTES) Tj ET`);
 
-    tableY -= 18;
-    const rowHeight = 20;
+    tableY -= tableHeaderHeight;
+    const rowHeight = isCompact ? 15 : 20;
 
     items.forEach((item, idx) => {
       if (tableY < 120) return; // Prevent overflow beyond page

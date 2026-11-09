@@ -78,10 +78,18 @@
           <span class="project-title" id="displayProjectTitle">Sample Measurement Sheet</span>
           <span class="project-tag" id="displayProjectCategory">General</span>
         </div>
-        <div class="project-dropdown-arrow">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+        <div class="project-selector-actions">
+          <button type="button" class="btn-rename-header" id="btnHeaderRenameSheet" title="Rename current sheet" aria-label="Rename current sheet">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <div class="project-dropdown-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
         </div>
       </div>
     </header>
@@ -363,16 +371,24 @@
         <!-- Category Tag -->
         <div class="form-group">
           <label class="form-label" for="inputItemCategory">Category / Room / Part</label>
-          <input type="text" id="inputItemCategory" class="form-input" placeholder="e.g. Living Room, Outerwear, Hardware, Frame..." list="categoryList">
+          <input type="text" id="inputItemCategory" class="form-input" placeholder="e.g. Living Room, Kitchen, Hardware, Frame..." list="categoryList" autocomplete="off">
           <datalist id="categoryList">
             <option value="General">
-            <option value="Room Dimensions">
+            <option value="Living Room">
+            <option value="Bedroom">
+            <option value="Kitchen">
+            <option value="Bathroom">
             <option value="Windows & Doors">
             <option value="Cabinetry">
-            <option value="Upper Body">
-            <option value="Lower Body">
+            <option value="Framing">
             <option value="Hardware">
+            <option value="Electrical">
+            <option value="Plumbing">
+            <option value="Exterior">
           </datalist>
+
+          <!-- Category Quick Suggestion Chips -->
+          <div class="suggestion-chips" id="categorySuggestions"></div>
         </div>
 
         <!-- Notes / Specs -->
@@ -444,7 +460,7 @@
         </div>
 
         <!-- Backup / Data Tools -->
-        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+        <div class="sheets-backup-section">
           <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;">
             Backup & Data Transfer
           </div>
@@ -602,62 +618,92 @@
       </div>
 
       <div class="popup-body">
-        <!-- PDF Options -->
-        <div class="pdf-options-grid">
-          <div class="form-group">
-            <label class="form-label" for="pdfTitleInput">Document Title</label>
-            <input type="text" id="pdfTitleInput" class="form-input" value="MEASUREMENT SPECIFICATION SHEET">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="pdfClientInput">Client / Location</label>
-            <input type="text" id="pdfClientInput" class="form-input" placeholder="e.g. John Doe / Room 204">
-          </div>
-        </div>
+        <div class="pdf-modal-layout">
+          <div class="pdf-controls-col">
+            <!-- PDF Options -->
+            <div class="pdf-options-grid">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="pdfTitleInput" style="margin-bottom: 4px; font-size: 0.74rem;">Document Title</label>
+                <input type="text" id="pdfTitleInput" class="form-input" value="MEASUREMENT SPECIFICATION SHEET" style="padding: 6px 10px; font-size: 0.8rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="pdfClientInput" style="margin-bottom: 4px; font-size: 0.74rem;">Client / Location</label>
+                <input type="text" id="pdfClientInput" class="form-input" placeholder="e.g. John Doe / Room 204" style="padding: 6px 10px; font-size: 0.8rem;">
+              </div>
+            </div>
 
-        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
-            <input type="checkbox" id="pdfIncludeSketch" checked style="accent-color: var(--accent-primary);">
-            Include Diagram Sketch
-          </label>
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
-            <input type="checkbox" id="pdfIncludeSign" checked style="accent-color: var(--accent-primary);">
-            Include Signatures
-          </label>
-        </div>
+            <div class="pdf-options-checks">
+              <label class="pdf-checkbox-chip">
+                <input type="checkbox" id="pdfIncludeSketch" checked>
+                <span>Diagram Sketch</span>
+              </label>
+              <label class="pdf-checkbox-chip">
+                <input type="checkbox" id="pdfIncludeSign" checked>
+                <span>Signatures</span>
+              </label>
+              <label class="pdf-checkbox-chip">
+                <input type="checkbox" id="pdfCompactView" checked>
+                <span>Compact View</span>
+              </label>
+            </div>
 
-        <!-- Contractor / Company Header Branding (Optional) -->
-        <div class="branding-config-box" style="margin-top: 10px; padding: 10px; background: var(--bg-input); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-          <div style="font-size: 0.76rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; margin-bottom: 6px;">
-            🏢 Contractor / Company Header (Optional)
+            <!-- Contractor / Company Header Branding (Optional Collapsible) -->
+            <details class="branding-config-box" id="brandingDetails">
+              <summary class="branding-summary">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 0.82rem;">🏢</span>
+                  <span style="font-size: 0.74rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase;">Company Header Branding</span>
+                  <span style="font-size: 0.68rem; color: var(--text-muted);">(Optional)</span>
+                </div>
+                <span class="branding-arrow">▾</span>
+              </summary>
+              <div class="branding-body">
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="pdfCompanyInput" class="form-input" placeholder="Company / Contractor Name" style="flex: 1.2; font-size: 0.80rem; padding: 6px 10px;">
+                  <input type="text" id="pdfContactInput" class="form-input" placeholder="Phone / Email / Lic #" style="flex: 1; font-size: 0.80rem; padding: 6px 10px;">
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                  <label class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 4px 10px; cursor: pointer;">
+                    📷 Upload Logo
+                    <input type="file" id="pdfLogoInput" accept="image/*" style="display: none;">
+                  </label>
+                  <div id="pdfLogoPreviewContainer" style="display: none; align-items: center; gap: 6px;">
+                    <img id="pdfLogoPreview" style="max-height: 24px; max-width: 60px; object-fit: contain; border-radius: 4px; background: #fff; padding: 2px;" alt="Logo">
+                    <button type="button" id="btnClearLogo" style="background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; padding: 2px 4px;">Remove</button>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
-          <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-            <input type="text" id="pdfCompanyInput" class="form-input" placeholder="Company / Contractor Name" style="flex: 1.2; font-size: 0.82rem;">
-            <input type="text" id="pdfContactInput" class="form-input" placeholder="Phone / Email / Lic #" style="flex: 1; font-size: 0.82rem;">
-          </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <label class="btn btn-secondary" style="font-size: 0.74rem; padding: 4px 10px; cursor: pointer;">
-              📷 Upload Logo
-              <input type="file" id="pdfLogoInput" accept="image/*" style="display: none;">
-            </label>
-            <div id="pdfLogoPreviewContainer" style="display: none; align-items: center; gap: 6px;">
-              <img id="pdfLogoPreview" style="max-height: 24px; max-width: 60px; object-fit: contain; border-radius: 4px; background: #fff; padding: 2px;" alt="Logo">
-              <button type="button" id="btnClearLogo" style="background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; padding: 2px 4px;">Remove</button>
+
+          <!-- Live Sheet Preview Box Container -->
+          <div class="pdf-preview-col">
+            <div class="pdf-preview-header">
+              <span class="form-label" style="margin: 0; font-size: 0.76rem; font-weight: 700; text-transform: uppercase;">Single-Page Sheet Preview</span>
+              <span class="preview-badge">1-Page Fit</span>
+            </div>
+            <div class="pdf-preview-box" id="pdfLivePreview">
+              <!-- Dynamic live preview -->
             </div>
           </div>
         </div>
-
-        <!-- Live Sheet Preview Box -->
-        <div class="form-label" style="margin-top: 12px;">Single-Page Sheet Preview</div>
-        <div class="pdf-preview-box" id="pdfLivePreview">
-          <!-- Dynamic live preview -->
-        </div>
       </div>
 
-      <div class="popup-footer" style="flex-direction: column;">
+      <div class="popup-footer pdf-modal-footer">
         <div style="display: flex; gap: 8px; width: 100%;">
-          <!-- Native Share Sheet button -->
-          <button type="button" class="btn btn-primary" id="btnShareSheet" style="flex: 1.2;">
+          <!-- Print button triggers window.print() -->
+          <button type="button" class="btn btn-primary" id="btnExecutePrint" style="flex: 1.3;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>Print Sheet</span>
+          </button>
+
+          <!-- Native Share Sheet button -->
+          <button type="button" class="btn btn-secondary" id="btnShareSheet" style="flex: 1;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"></circle>
               <circle cx="6" cy="12" r="3"></circle>
               <circle cx="18" cy="19" r="3"></circle>
@@ -667,19 +713,9 @@
             <span>Share</span>
           </button>
 
-          <!-- Print button triggers window.print() -->
-          <button type="button" class="btn btn-secondary" id="btnExecutePrint" style="flex: 1;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 6 2 18 2 18 9"></polyline>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-              <rect x="6" y="14" width="12" height="8"></rect>
-            </svg>
-            <span>Print</span>
-          </button>
-
           <!-- Direct Download PDF Binary button -->
-          <button type="button" class="btn btn-secondary" id="btnDownloadPdf" style="flex: 1;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="button" class="btn btn-secondary" id="btnDownloadPdf" style="flex: 0.9;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -688,8 +724,8 @@
           </button>
 
           <!-- CSV Export button -->
-          <button type="button" class="btn btn-secondary" id="btnDownloadCsv" style="flex: 1;" title="Export as CSV / Excel spreadsheet">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="button" class="btn btn-secondary" id="btnDownloadCsv" style="flex: 0.9;" title="Export as CSV / Excel spreadsheet">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
               <line x1="8" y1="13" x2="16" y2="13"></line>
@@ -699,15 +735,15 @@
           </button>
         </div>
 
-        <div style="display: flex; gap: 8px; width: 100%;">
-          <button type="button" class="btn btn-secondary" id="btnCopyTextSummary" style="flex: 1; font-size: 0.82rem;">
+        <div style="display: flex; gap: 8px; width: 100%; margin-top: 6px;">
+          <button type="button" class="btn btn-secondary" id="btnCopyTextSummary" style="flex: 1; font-size: 0.78rem; padding: 6px 10px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
             Copy Text
           </button>
-          <button type="button" class="btn btn-secondary" data-close-popup style="flex: 0.8;">Done</button>
+          <button type="button" class="btn btn-secondary" data-close-popup style="flex: 0.8; font-size: 0.78rem; padding: 6px 10px;">Done</button>
         </div>
       </div>
     </div>
