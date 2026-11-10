@@ -211,6 +211,16 @@
             </svg>
             Templates
           </button>
+          <label class="btn btn-secondary" id="btnEmptyImportCsv" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Import items from CSV file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <polyline points="9 15 12 12 15 15"></polyline>
+            </svg>
+            <span>Import CSV</span>
+            <input type="file" id="importCsvInputEmpty" accept=".csv,text/csv" style="display: none;">
+          </label>
         </div>
       </div>
     </section>
@@ -296,14 +306,24 @@
 
             <div class="dim-unit-pill">
               <label for="selectItemUnit" class="dim-unit-tag">Unit</label>
-              <select id="selectItemUnit" class="form-select dim-unit-select" title="Measurement Unit">
-                <option value="cm">cm</option>
-                <option value="in">in (")</option>
-                <option value="mm">mm</option>
-                <option value="m">m</option>
-                <option value="ft">ft (')</option>
-                <option value="yd">yd</option>
-              </select>
+              <div class="dim-unit-select-wrap">
+                <span class="dim-unit-value" id="unitSelectDisplay" aria-hidden="true">cm</span>
+                <select id="selectItemUnit" class="dim-unit-select" title="Measurement Unit">
+                  <optgroup label="Metric">
+                    <option value="mm">Millimeters (mm)</option>
+                    <option value="cm" selected>Centimeters (cm)</option>
+                    <option value="m">Meters (m)</option>
+                  </optgroup>
+                  <optgroup label="Imperial">
+                    <option value="in">Inches (in / ")</option>
+                    <option value="ft">Feet (ft / ')</option>
+                    <option value="yd">Yards (yd)</option>
+                  </optgroup>
+                </select>
+                <svg class="dim-unit-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -326,7 +346,7 @@
           <!-- 1D Single Value Field -->
           <div class="dim-single-container" id="singleValueGrid">
             <div class="value-input-wrapper">
-              <input type="text" id="inputItemValue" class="form-input dim-primary-input" placeholder="0.0" inputmode="decimal">
+              <input type="text" id="inputItemValue" class="form-input dim-primary-input" placeholder="0.0 (e.g. 1' 5&quot; + 1/4&quot;)" autocomplete="off">
             </div>
           </div>
 
@@ -336,35 +356,45 @@
               <div class="dim-input-col">
                 <label class="dim-col-label" for="inputDimL">Length (L)</label>
                 <div class="dim-input-field-wrap">
-                  <input type="text" id="inputDimL" class="form-input dim-field-input" placeholder="0" inputmode="decimal">
+                  <input type="text" id="inputDimL" class="form-input dim-field-input" placeholder="0 (e.g. 1' 5&quot; + 1/4&quot;)" autocomplete="off">
                 </div>
               </div>
               <div class="dim-sep" id="sepDimW" aria-hidden="true">×</div>
               <div class="dim-input-col">
                 <label class="dim-col-label" for="inputDimW">Width (W)</label>
                 <div class="dim-input-field-wrap">
-                  <input type="text" id="inputDimW" class="form-input dim-field-input" placeholder="0" inputmode="decimal">
+                  <input type="text" id="inputDimW" class="form-input dim-field-input" placeholder="0" autocomplete="off">
                 </div>
               </div>
               <div class="dim-sep" id="sepDimH" aria-hidden="true" style="display: none;">×</div>
               <div class="dim-input-col" id="colDimH" style="display: none;">
                 <label class="dim-col-label" for="inputDimH">Height (H)</label>
                 <div class="dim-input-field-wrap">
-                  <input type="text" id="inputDimH" class="form-input dim-field-input" placeholder="0" inputmode="decimal">
+                  <input type="text" id="inputDimH" class="form-input dim-field-input" placeholder="0" autocomplete="off">
                 </div>
               </div>
             </div>
             <div id="compositeCalcBadge" class="composite-calc-badge" style="display: none;"></div>
           </div>
 
-          <!-- Quick numeric adjustments (shared, applies to active value input) -->
+          <!-- Live CAD & Expression Evaluator Hint -->
+          <div id="cadExprHint" class="cad-calc-hint" style="display: none;"></div>
+
+          <!-- Quick numeric & CAD adjustments (shared, applies to active value input) -->
           <div class="quick-value-helpers">
             <button type="button" class="helper-btn" data-inc="-1">-1</button>
             <button type="button" class="helper-btn" data-inc="+1">+1</button>
             <button type="button" class="helper-btn" data-inc="+0.5">+0.5</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad="'" title="Feet (')">' (ft)</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad='"' title='Inches (")'>" (in)</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad=" + " title="Add (+)">+</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad=" - " title="Subtract (-)">-</button>
             <button type="button" class="helper-btn" data-frac=" 1/4">¼</button>
             <button type="button" class="helper-btn" data-frac=" 1/2">½</button>
             <button type="button" class="helper-btn" data-frac=" 3/4">¾</button>
+            <button type="button" class="helper-btn" data-frac=" 1/8">⅛</button>
+            <button type="button" class="helper-btn" data-frac=" 3/8">⅜</button>
+            <button type="button" class="helper-btn helper-eval-btn" id="btnEvalCadExpr" title="Evaluate CAD formula immediately">=</button>
           </div>
         </div>
 
@@ -481,6 +511,18 @@
               </svg>
               <span>Import JSON</span>
               <input type="file" id="importFileInput" accept=".json" style="display: none;">
+            </label>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <label class="btn btn-secondary btn-block" id="btnImportCsvProjects" style="font-size: 0.8rem; cursor: pointer; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Import items into current sheet from CSV cut-list">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <polyline points="9 15 12 12 15 15"></polyline>
+              </svg>
+              <span>Import CSV Items</span>
+              <input type="file" id="importCsvInput" accept=".csv,text/csv" style="display: none;">
             </label>
           </div>
         </div>
@@ -630,6 +672,22 @@
                 <label class="form-label" for="pdfClientInput" style="margin-bottom: 4px; font-size: 0.74rem;">Client / Location</label>
                 <input type="text" id="pdfClientInput" class="form-input" placeholder="e.g. John Doe / Room 204" style="padding: 6px 10px; font-size: 0.8rem;">
               </div>
+              <div class="form-group pdf-common-unit-group" style="margin-bottom: 0;">
+                <label class="form-label" for="pdfCommonUnit" style="margin-bottom: 4px; font-size: 0.74rem;">Common Unit (Print &amp; PDF)</label>
+                <select id="pdfCommonUnit" class="form-select" style="padding: 6px 10px; font-size: 0.8rem;" title="Convert every printed value, area, and volume to one unit">
+                  <option value="">Original units (per item)</option>
+                  <optgroup label="Metric">
+                    <option value="mm">Millimeters (mm)</option>
+                    <option value="cm">Centimeters (cm)</option>
+                    <option value="m">Meters (m)</option>
+                  </optgroup>
+                  <optgroup label="Imperial">
+                    <option value="in">Inches (in)</option>
+                    <option value="ft">Feet (ft)</option>
+                    <option value="yd">Yards (yd)</option>
+                  </optgroup>
+                </select>
+              </div>
             </div>
 
             <div class="pdf-options-checks">
@@ -642,8 +700,20 @@
                 <span>Signatures</span>
               </label>
               <label class="pdf-checkbox-chip">
-                <input type="checkbox" id="pdfCompactView" checked>
-                <span>Compact View</span>
+                <input type="checkbox" id="pdfIncludeArea" checked>
+                <span>Area</span>
+              </label>
+              <label class="pdf-checkbox-chip">
+                <input type="checkbox" id="pdfIncludeVolume" checked>
+                <span>Volume</span>
+              </label>
+              <label class="pdf-checkbox-chip">
+                <input type="checkbox" id="pdfIncludeCategories" checked>
+                <span>Categories</span>
+              </label>
+              <label class="pdf-checkbox-chip">
+                <input type="checkbox" id="pdfIncludeNotes" checked>
+                <span>Notes</span>
               </label>
             </div>
 
@@ -690,10 +760,10 @@
       </div>
 
       <div class="popup-footer pdf-modal-footer">
-        <div style="display: flex; gap: 8px; width: 100%;">
+        <div class="pdf-footer-row pdf-footer-primary-row">
           <!-- Print button triggers window.print() -->
-          <button type="button" class="btn btn-primary" id="btnExecutePrint" style="flex: 1.3;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="button" class="btn btn-primary" id="btnExecutePrint">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 6 2 18 2 18 9"></polyline>
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
               <rect x="6" y="14" width="12" height="8"></rect>
@@ -702,7 +772,7 @@
           </button>
 
           <!-- Native Share Sheet button -->
-          <button type="button" class="btn btn-secondary" id="btnShareSheet" style="flex: 1;">
+          <button type="button" class="btn btn-secondary" id="btnShareSheet">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"></circle>
               <circle cx="6" cy="12" r="3"></circle>
@@ -712,10 +782,12 @@
             </svg>
             <span>Share</span>
           </button>
+        </div>
 
+        <div class="pdf-footer-row pdf-footer-secondary-row">
           <!-- Direct Download PDF Binary button -->
-          <button type="button" class="btn btn-secondary" id="btnDownloadPdf" style="flex: 0.9;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="button" class="btn btn-secondary" id="btnDownloadPdf" title="Download PDF file">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -724,8 +796,8 @@
           </button>
 
           <!-- CSV Export button -->
-          <button type="button" class="btn btn-secondary" id="btnDownloadCsv" style="flex: 0.9;" title="Export as CSV / Excel spreadsheet">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="button" class="btn btn-secondary" id="btnDownloadCsv" title="Export as CSV / Excel spreadsheet">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
               <line x1="8" y1="13" x2="16" y2="13"></line>
@@ -733,17 +805,20 @@
             </svg>
             <span>CSV</span>
           </button>
-        </div>
 
-        <div style="display: flex; gap: 8px; width: 100%; margin-top: 6px;">
-          <button type="button" class="btn btn-secondary" id="btnCopyTextSummary" style="flex: 1; font-size: 0.78rem; padding: 6px 10px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <!-- Copy Text button -->
+          <button type="button" class="btn btn-secondary" id="btnCopyTextSummary" title="Copy formatted text summary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
-            Copy Text
+            <span>Copy Text</span>
           </button>
-          <button type="button" class="btn btn-secondary" data-close-popup style="flex: 0.8; font-size: 0.78rem; padding: 6px 10px;">Done</button>
+
+          <!-- Done button -->
+          <button type="button" class="btn btn-secondary btn-close-modal" data-close-popup title="Done">
+            <span>Done</span>
+          </button>
         </div>
       </div>
     </div>
@@ -764,6 +839,19 @@
       </div>
 
       <div class="popup-body">
+        <!-- Import CSV Cut-List Card -->
+        <label class="template-card template-card-import" id="btnImportCsvTemplateCard" style="cursor: pointer; border: 1.5px dashed var(--accent-primary); background: rgba(56, 189, 248, 0.06); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: var(--radius-md);" title="Import items & cut-lists from CSV file">
+          <div class="template-info" style="display: flex; align-items: center; gap: 10px;">
+            <span class="template-icon" style="font-size: 1.3rem;">📥</span>
+            <div>
+              <div class="template-title" style="color: var(--accent-primary); font-weight: 700; font-size: 0.9rem;">Import CSV Items / Cut-List</div>
+              <div class="template-items" style="color: var(--text-secondary); font-size: 0.76rem;">Load custom dimensions from spreadsheet (.csv)</div>
+            </div>
+          </div>
+          <span class="btn btn-secondary" style="font-size: 0.72rem; padding: 4px 10px; pointer-events: none; border-color: var(--accent-primary); color: var(--accent-primary);">Upload CSV</span>
+          <input type="file" id="importCsvInputTemplate" accept=".csv,text/csv" style="display: none;">
+        </label>
+
         <!-- Custom Saved Templates -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span style="font-size: 0.78rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase;">Custom Saved Templates</span>
@@ -837,8 +925,18 @@
         </div>
       </div>
 
-      <div class="popup-footer">
-        <button type="button" class="btn btn-secondary btn-block" data-close-popup>Cancel</button>
+      <div class="popup-footer" style="display: flex; gap: 8px;">
+        <label class="btn btn-secondary" id="btnImportCsvTemplateFooter" style="flex: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;" title="Import items from CSV file">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <polyline points="9 15 12 12 15 15"></polyline>
+          </svg>
+          <span>Import CSV</span>
+          <input type="file" id="importCsvInputTemplateFooter" accept=".csv,text/csv" style="display: none;">
+        </label>
+        <button type="button" class="btn btn-secondary" style="flex: 1;" data-close-popup>Close</button>
       </div>
     </div>
   </div>
@@ -863,7 +961,7 @@
           <div class="form-label">Fast Unit Conversion</div>
           <div class="converter-row">
             <div>
-              <input type="number" id="convFromVal" class="form-input" value="10" placeholder="0">
+              <input type="text" id="convFromVal" class="form-input" value="10" placeholder="0 (or 5 1/4, 1' 5&quot;)" autocomplete="off">
               <select id="convFromUnit" class="form-select" style="margin-top: 6px;">
                 <option value="in">Inches (in)</option>
                 <option value="cm" selected>Centimeters (cm)</option>
@@ -898,9 +996,9 @@
           <!-- Quick Area / Volume Calculator -->
           <div class="form-label" style="margin-top: 10px;">Area & Volume Calculator</div>
           <div class="calc-inputs-grid">
-            <input type="number" id="calcL" class="form-input" placeholder="L (Length)">
-            <input type="number" id="calcW" class="form-input" placeholder="W (Width)">
-            <input type="number" id="calcH" class="form-input" placeholder="H (Height)">
+            <input type="text" id="calcL" class="form-input" placeholder="L (Length)" autocomplete="off">
+            <input type="text" id="calcW" class="form-input" placeholder="W (Width)" autocomplete="off">
+            <input type="text" id="calcH" class="form-input" placeholder="H (Height)" autocomplete="off">
           </div>
           <div style="background: var(--bg-input); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-around; text-align: center;">
             <div>
@@ -1067,6 +1165,7 @@
   <div id="print-page-layout"></div>
 
   <!-- Scripts -->
+  <script src="js/cad-parser.js"></script>
   <script src="js/sketch-pad.js"></script>
   <script src="js/pdf-generator.js"></script>
   <script src="js/app.js"></script>

@@ -18,6 +18,7 @@ A mobile web application designed for rapid on-site measurement notes, photo ann
 
 - **📏 Fast On-Site Measurement Notes**:
   - **Unified Search & Category Selector**: The category filter is integrated directly inside the search bar as a dropdown list with live item counts, freeing up vertical screen space.
+  - **📐 In-line Math & CAD Expressions**: Enter arithmetic and fractional formulas directly into dimension inputs (e.g., `72 + 1/2`, `36.5 * 2`, `14 - 3/8`, `1200 / 4`) with instant evaluation.
   - **Multi-Dimension 2D & 3D Modes**: Switch between 1D (single value), 2D ($L \times W$), and 3D ($L \times W \times H$) with instant live area and volume calculations.
   - **↕️ Item Reordering**: Dedicated up/down controls on every card to order measurements logically.
   - Quick dimension suggestions (*Length, Width, Height, Depth, Thickness, Waist, Chest, Inseam*).
@@ -29,12 +30,17 @@ A mobile web application designed for rapid on-site measurement notes, photo ann
   - **↩️ Undo Toast**: Restore deleted items immediately with a 1-tap Undo button.
 
 - **📄 Single-Page PDF Print, Share & CSV Export**:
-  - **📲 Native Mobile Share (`navigator.share`)**: Instantly share the generated PDF and summary directly to WhatsApp, Messages, AirDrop, or Gmail on mobile devices.
+  - **📲 Native Mobile Share (`navigator.share`)**: Tapping the **Share** button triggers your device's default mobile share sheet (WhatsApp, Messages, AirDrop, Gmail, Slack) immediately with title, clean text summary, and attached PDF file.
+  - **📱 Mobile-Optimized Action Footer**: Structured 2-row footer layout ensures all 6 action buttons (**Print Sheet**, **Share**, **PDF**, **CSV**, **Copy Text**, **Done**) remain 100% visible and accessible across all mobile devices down to 320px width.
   - **📊 CSV / Excel Cut-List Export**: Download clean RFC 4180 UTF-8 CSV cut lists for spreadsheets, CNC routers, or cutting software.
+  - **📋 Clean Text Summary & "✓ Copied!" Feedback**: Copy a clean, formatted text breakdown to the clipboard with real-time button feedback ("✓ Copied!"). Respects selected common unit conversions, category, and note toggles.
   - **🏢 Contractor & Company Branding**: Add company name, license line, and logo to embed directly into PDF reports.
-  - **Native Print Page**: Triggers browser/mobile print dialog formatted with CSS `@media print` rules specifically styled for clean, high-contrast, single-page A4/Letter printing.
+  - **🖨️ Streamlined Single-Page Print Layout with Reduced Borders**:
+    - Eliminated harsh outer page borders in print to let paper margins frame the document cleanly.
+    - Softened table dividers, removed vertical column lines, and minimized header/summary rules.
+    - Removed redundant boilerplate text, app watermarks, and hex codes for an executive, clutter-free look.
   - **Standalone .PDF Download**: Generates standard PDF 1.4 binary documents offline using a pure client-side PDF generator (no external network or CDNs required).
-  - **Text Summary Copy**: Instant clipboard copy formatted for quick sharing via WhatsApp, SMS, or Slack.
+  - **📐 Area, 📦 Volume, 🏷️ Categories & 📝 Notes Print Options**: Dedicated toggle options in the print dialog to customize table columns (Area, Volume, Categories, and Notes/Specs) with live fit-to-page preview.
   - Configurable title, client reference, signature block, and date.
 
 - **✏️ Touch Diagram, Photo Backdrop & Sketch Pad**:
@@ -42,7 +48,8 @@ A mobile web application designed for rapid on-site measurement notes, photo ann
   - **🔤 Text & Dimension Stamp**: Tap to place crisp, high-contrast measurement labels (e.g. `142 cm`, `Clearance`) anywhere on the canvas.
   - Saved diagrams automatically embed directly into the printed PDF sheet!
 
-- **⚡ Starter Presets & Custom Templates**:
+- **⚡ Starter Presets, Custom Templates & CSV Import**:
+  - **📥 Import CSV Cut-List / Template**: Seamlessly load dimensions from `.csv` spreadsheet files directly into your active sheet with intelligent column detection (`Item`, `Value`, `Unit`, `Category`, `Notes`, `Verified`), supporting European semicolon separators, RFC 4180 quotes, and embedded unit parsing.
   - **⭐ "Save Current Sheet as Template"**: Save custom recurring dimension checklists to reuse anytime.
   - *Room & Interior Architecture* (Wall Length, Wall Width, Ceiling Height, Window/Door openings)
   - *Tailoring & Apparel* (Chest, Waist, Hips, Shoulder, Sleeve, Inseam, Neck)
@@ -86,10 +93,12 @@ xdg-open index.html
 
 ---
 
-## 🖨️ Printing, Sharing or Saving PDF on Mobile
+## 🖨️ Printing, Sharing or Saving on Mobile
 
-1. Tap **"PDF"** (top header button or bottom action bar).
-2. Tap **"Share"** to open the native mobile share sheet (WhatsApp, AirDrop, Messages, etc.).
-3. Tap **"CSV"** to download an Excel-ready cut-list table.
-4. Tap **"Print"** to trigger the system print dialog (Save as PDF on Android / pinch-out on iOS).
-5. Tap **"PDF"** to directly download the binary `.pdf` file offline.
+1. Tap **"PDF"** (top header button or bottom floating action bar) to open the print & export sheet.
+2. Customize your sheet using the column toggles (**Area**, **Volume**, **Categories**, **Notes**) or select a common conversion unit.
+3. Tap **"Print Sheet"** to open the browser/system print dialog formatted for single-page printing.
+4. Tap **"Share"** to open your device's native share sheet (WhatsApp, Messages, AirDrop, Gmail).
+5. Tap **"Copy Text"** to copy a clean text breakdown directly to your clipboard.
+6. Tap **"PDF"** to download the standalone `.pdf` binary file offline.
+7. Tap **"CSV"** to export an Excel-ready cut-list spreadsheet.

@@ -1,9 +1,10 @@
-const CACHE_NAME = 'sizenotes-cache-v4';
+const CACHE_NAME = 'sizenotes-cache-v9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
+  './js/cad-parser.js',
   './js/app.js',
   './js/sketch-pad.js',
   './js/pdf-generator.js',

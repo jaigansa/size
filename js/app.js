@@ -109,6 +109,8 @@
   let sketchPad = null;
   let lastDeletedItem = null;
   let activeDimMode = '1d'; // '1d', '2d', '3d'
+  let lastActiveDimInput = null;
+  let lastSelectedUnit = 'cm'; // tracks the unit before a selector change so values can be converted
   let customTemplates = [];
   let companyBranding = { name: '', contact: '', logo: null };
 
@@ -168,10 +170,13 @@
     sepDimH: document.getElementById('sepDimH'),
     dimSectionTitle: document.getElementById('dimSectionTitle'),
     compositeCalcBadge: document.getElementById('compositeCalcBadge'),
+    cadExprHint: document.getElementById('cadExprHint'),
+    btnEvalCadExpr: document.getElementById('btnEvalCadExpr'),
     singleValueGrid: document.getElementById('singleValueGrid'),
     inputItemLabel: document.getElementById('inputItemLabel'),
     inputItemValue: document.getElementById('inputItemValue'),
     selectItemUnit: document.getElementById('selectItemUnit'),
+    unitSelectDisplay: document.getElementById('unitSelectDisplay'),
     inputItemCategory: document.getElementById('inputItemCategory'),
     inputItemNotes: document.getElementById('inputItemNotes'),
     checkVerified: document.getElementById('checkVerified'),
@@ -189,6 +194,10 @@
     btnCreateProject: document.getElementById('btnCreateProject'),
     btnExportData: document.getElementById('btnExportData'),
     importFileInput: document.getElementById('importFileInput'),
+    importCsvInput: document.getElementById('importCsvInput'),
+    importCsvInputTemplate: document.getElementById('importCsvInputTemplate'),
+    importCsvInputTemplateFooter: document.getElementById('importCsvInputTemplateFooter'),
+    importCsvInputEmpty: document.getElementById('importCsvInputEmpty'),
 
     // Sketch Modal
     popupSketch: document.getElementById('popupSketch'),
@@ -219,7 +228,11 @@
     btnClearLogo: document.getElementById('btnClearLogo'),
     pdfIncludeSketch: document.getElementById('pdfIncludeSketch'),
     pdfIncludeSign: document.getElementById('pdfIncludeSign'),
-    pdfCompactView: document.getElementById('pdfCompactView'),
+    pdfIncludeArea: document.getElementById('pdfIncludeArea'),
+    pdfIncludeVolume: document.getElementById('pdfIncludeVolume'),
+    pdfIncludeCategories: document.getElementById('pdfIncludeCategories'),
+    pdfIncludeNotes: document.getElementById('pdfIncludeNotes'),
+    pdfCommonUnit: document.getElementById('pdfCommonUnit'),
     brandingDetails: document.getElementById('brandingDetails'),
     pdfLivePreview: document.getElementById('pdfLivePreview'),
     btnShareSheet: document.getElementById('btnShareSheet'),
@@ -544,7 +557,7 @@
     let sumCount = 0;
     items.forEach(i => {
       if ((i.unit || '').toLowerCase() === mainUnit) {
-        const val = parseFractionOrDecimal(i.value);
+        const val = parseFractionOrDecimal(i.value, mainUnit);
         if (!isNaN(val)) {
           sum += val;
           sumCount++;
@@ -557,9 +570,21 @@
     el.statGroupCount.textContent = `${categories.size} group${categories.size === 1 ? '' : 's'}`;
   }
 
-  function parseFractionOrDecimal(valStr) {
+  function parseFractionOrDecimal(valStr, defaultUnit = 'in') {
     if (!valStr) return NaN;
     valStr = String(valStr).trim();
+
+    // Check CADParser first (handles architectural CAD expressions like 1' 5" + 1/4", 3' 6" - 2", fractions, etc.)
+    if (window.CADParser) {
+      let firstPart = valStr;
+      if (valStr.includes('×') || (valStr.search(/\s+[xX]\s+/) !== -1)) {
+        firstPart = valStr.split(/\s*[×xX]\s*/)[0].trim();
+      }
+      const cadNum = window.CADParser.evaluateToNumber(firstPart, defaultUnit);
+      if (!isNaN(cadNum)) {
+        return cadNum;
+      }
+    }
 
     // If composite (e.g. 120 × 80), take first number for summation
     if (valStr.includes('×') || valStr.includes('x') || valStr.includes('X')) {
@@ -588,6 +613,121 @@
     }
 
     return parseFloat(valStr);
+  }
+
+  // ==========================================================================
+  // UNIT SWITCHING
+  // ==========================================================================
+
+  // Linear unit factors relative to one meter.
+  const UNIT_TO_METERS = {
+    mm: 0.001,
+    cm: 0.01,
+    m: 1,
+    in: 0.0254,
+    ft: 0.3048,
+    yd: 0.9144
+  };
+
+  const UNIT_DECIMALS = { mm: 1, cm: 2, m: 4, in: 3, ft: 4, yd: 4 };
+
+  const UNIT_LABELS = {
+    mm: 'millimeters',
+    cm: 'centimeters',
+    m: 'meters',
+    in: 'inches',
+    ft: 'feet',
+    yd: 'yards'
+  };
+
+  const UNIT_SHORT_LABELS = {
+    mm: 'mm',
+    cm: 'cm',
+    m: 'm',
+    in: 'in (")',
+    ft: "ft (')",
+    yd: 'yd'
+  };
+
+  // Keep the compact pill label in sync with the (transparent) native select.
+  function syncUnitDisplay() {
+    if (!el.unitSelectDisplay || !el.selectItemUnit) return;
+    const unit = el.selectItemUnit.value;
+    el.unitSelectDisplay.textContent = UNIT_SHORT_LABELS[unit] || unit;
+  }
+
+  function convertBetweenUnits(value, fromUnit, toUnit) {
+    if (!isFinite(value) || fromUnit === toUnit) return value;
+    const from = UNIT_TO_METERS[fromUnit] || UNIT_TO_METERS.cm;
+    const to = UNIT_TO_METERS[toUnit] || UNIT_TO_METERS.cm;
+    return value * from / to;
+  }
+
+  function formatUnitValue(value, unit) {
+    if (!isFinite(value)) return '';
+    const decimals = UNIT_DECIMALS[unit];
+    if (decimals === undefined) return String(value);
+    const factor = Math.pow(10, decimals);
+    return String(Math.round(value * factor) / factor);
+  }
+
+  // Like parseFractionOrDecimal(), but keeps the full precision of the parsed
+  // CAD result instead of the 3-decimal "value" field. This avoids drift when
+  // switching units back and forth.
+  function parseValueInUnit(raw, unit) {
+    const str = String(raw || '').trim();
+    if (!str) return NaN;
+
+    if (window.CADParser && window.CADParser.parse) {
+      const res = window.CADParser.parse(str, unit);
+      if (res && isFinite(res.inches)) {
+        const factor = window.CADParser.fromInches[unit];
+        return res.inches * (factor === undefined ? 1 : factor);
+      }
+    }
+
+    return parseFractionOrDecimal(str, unit);
+  }
+
+  // Converts a single input string (plain, fraction, CAD expression or composite)
+  // from one unit to another, preserving the composite "a × b" structure.
+  function convertInputValueString(raw, fromUnit, toUnit) {
+    const str = String(raw || '').trim();
+    if (!str) return str;
+
+    if (str.includes('×') || str.search(/\s+[xX]\s+/) !== -1) {
+      return str.split(/\s*[×xX]\s*/).map(part => {
+        const num = parseValueInUnit(part.trim(), fromUnit);
+        if (isNaN(num)) return part.trim();
+        return formatUnitValue(convertBetweenUnits(num, fromUnit, toUnit), toUnit);
+      }).join(' × ');
+    }
+
+    const num = parseValueInUnit(str, fromUnit);
+    if (isNaN(num)) return str;
+    return formatUnitValue(convertBetweenUnits(num, fromUnit, toUnit), toUnit);
+  }
+
+  // Convert the values already typed into the measurement form when the user
+  // switches units, instead of silently relabeling them.
+  function convertMeasurementInputs(fromUnit, toUnit) {
+    if (!fromUnit || !toUnit || fromUnit === toUnit) return 0;
+
+    const fields = [el.inputItemValue, el.inputDimL, el.inputDimW, el.inputDimH];
+    let converted = 0;
+
+    fields.forEach(field => {
+      if (!field) return;
+      const raw = (field.value || '').trim();
+      if (!raw) return;
+      const next = convertInputValueString(raw, fromUnit, toUnit);
+      if (next !== raw) {
+        field.value = next;
+        converted++;
+      }
+    });
+
+    return converted;
   }
 
   // ==========================================================================
@@ -877,13 +1017,14 @@
       }
       updateCompositeCalc();
     }
+    updateCadHint(mode === '1d' ? el.inputItemValue : (lastActiveDimInput || el.inputDimL));
   }
 
   function updateCompositeCalc() {
-    const l = parseFractionOrDecimal(el.inputDimL ? el.inputDimL.value : '') || 0;
-    const w = parseFractionOrDecimal(el.inputDimW ? el.inputDimW.value : '') || 0;
-    const h = parseFractionOrDecimal(el.inputDimH ? el.inputDimH.value : '') || 0;
     const unit = (el.selectItemUnit && el.selectItemUnit.value) ? el.selectItemUnit.value : 'cm';
+    const l = parseFractionOrDecimal(el.inputDimL ? el.inputDimL.value : '', unit) || 0;
+    const w = parseFractionOrDecimal(el.inputDimW ? el.inputDimW.value : '', unit) || 0;
+    const h = parseFractionOrDecimal(el.inputDimH ? el.inputDimH.value : '', unit) || 0;
 
     if (!el.compositeCalcBadge) return;
 
@@ -911,6 +1052,41 @@
     } else {
       el.compositeCalcBadge.style.display = 'none';
     }
+  }
+
+  function updateCadHint(inputEl) {
+    if (!el.cadExprHint) return;
+    const target = inputEl || (activeDimMode === '1d' ? el.inputItemValue : (lastActiveDimInput || el.inputDimL));
+    if (!target) {
+      el.cadExprHint.style.display = 'none';
+      return;
+    }
+    const val = (target.value || '').trim();
+    const unit = (el.selectItemUnit && el.selectItemUnit.value) ? el.selectItemUnit.value : 'in';
+    if (window.CADParser && window.CADParser.isCadExpression(val)) {
+      const hint = window.CADParser.formatLiveHint(val, unit);
+      if (hint) {
+        el.cadExprHint.innerHTML = `
+          <span class="cad-calc-hint-val" title="CAD evaluation">${escapeHtml(hint)}</span>
+          <button type="button" class="cad-calc-hint-btn" id="btnApplyCadHint" title="Replace expression with evaluated value">Apply</button>
+        `;
+        el.cadExprHint.style.display = 'flex';
+        const applyBtn = el.cadExprHint.querySelector('#btnApplyCadHint');
+        if (applyBtn) {
+          applyBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const resolved = window.CADParser.resolveExpressionString(val, unit);
+            target.value = resolved;
+            target.focus();
+            updateCadHint(target);
+            if (activeDimMode !== '1d') updateCompositeCalc();
+          };
+        }
+        return;
+      }
+    }
+    el.cadExprHint.style.display = 'none';
   }
 
   function renderCategorySuggestions() {
@@ -965,6 +1141,7 @@
     el.inputItemNotes.value = '';
     el.checkVerified.checked = false;
     setDimMode('1d');
+    if (el.cadExprHint) el.cadExprHint.style.display = 'none';
 
     // Retain last used unit and category for quick consecutive note taking
     const lastItem = currentProject.items && currentProject.items[currentProject.items.length - 1];
@@ -981,6 +1158,8 @@
     } else {
       el.selectItemUnit.value = 'cm';
     }
+    lastSelectedUnit = el.selectItemUnit.value;
+    syncUnitDisplay();
 
     renderCategorySuggestions();
     openPopup(el.popupMeasurement);
@@ -994,14 +1173,16 @@
 
     el.inputItemLabel.value = item.label || '';
     el.selectItemUnit.value = item.unit || 'cm';
+    lastSelectedUnit = el.selectItemUnit.value;
+    syncUnitDisplay();
     el.inputItemCategory.value = item.category || '';
     el.inputItemNotes.value = item.notes || '';
     el.checkVerified.checked = !!item.verified;
 
     // Detect if value is composite 2D or 3D
     const val = String(item.value || '').trim();
-    if (val.includes('×') || val.includes('x') || val.includes('X')) {
-      const parts = val.split(/[×xX]/).map(s => s.trim());
+    if (val.includes('×') || (val.search(/\s+[xX]\s+/) !== -1)) {
+      const parts = val.split(/\s*[×xX]\s*/).map(s => s.trim());
       if (parts.length >= 3) {
         setDimMode('3d');
         el.inputDimL.value = parts[0] || '';
@@ -1019,36 +1200,57 @@
       el.inputItemValue.value = val;
     }
 
+    updateCadHint(activeDimMode === '1d' ? el.inputItemValue : el.inputDimL);
     renderCategorySuggestions();
     openPopup(el.popupMeasurement);
   }
 
   function saveCurrentMeasurement(andNext = false) {
     const label = el.inputItemLabel.value.trim();
+    const unit = el.selectItemUnit.value;
     let value = '';
 
+    const resolveCad = (str) => {
+      if (!str) return '';
+      if (window.CADParser && window.CADParser.isCadExpression(str)) {
+        return window.CADParser.resolveExpressionString(str, unit);
+      }
+      return str;
+    };
+
     if (activeDimMode === '1d') {
-      value = el.inputItemValue.value.trim();
+      const raw = el.inputItemValue.value.trim();
+      value = resolveCad(raw);
+      el.inputItemValue.value = value;
     } else if (activeDimMode === '2d') {
-      const l = el.inputDimL.value.trim();
-      const w = el.inputDimW.value.trim();
+      let l = el.inputDimL.value.trim();
+      let w = el.inputDimW.value.trim();
       if (!l || !w) {
         showToast('⚠️ Please enter Length and Width');
         return;
       }
+      l = resolveCad(l);
+      w = resolveCad(w);
+      el.inputDimL.value = l;
+      el.inputDimW.value = w;
       value = `${l} × ${w}`;
     } else if (activeDimMode === '3d') {
-      const l = el.inputDimL.value.trim();
-      const w = el.inputDimW.value.trim();
-      const h = el.inputDimH.value.trim();
+      let l = el.inputDimL.value.trim();
+      let w = el.inputDimW.value.trim();
+      let h = el.inputDimH.value.trim();
       if (!l || !w || !h) {
         showToast('⚠️ Please enter Length, Width, and Height');
         return;
       }
+      l = resolveCad(l);
+      w = resolveCad(w);
+      h = resolveCad(h);
+      el.inputDimL.value = l;
+      el.inputDimW.value = w;
+      el.inputDimH.value = h;
       value = `${l} × ${w} × ${h}`;
     }
 
-    const unit = el.selectItemUnit.value;
     const category = el.inputItemCategory.value.trim() || 'General';
     let notes = el.inputItemNotes.value.trim();
     const verified = el.checkVerified.checked;
@@ -1111,6 +1313,7 @@
         el.inputItemNotes.value = '';
         el.checkVerified.checked = false;
         if (el.compositeCalcBadge) el.compositeCalcBadge.style.display = 'none';
+        if (el.cadExprHint) el.cadExprHint.style.display = 'none';
         el.inputItemLabel.focus();
       } else {
         closePopup(el.popupMeasurement);
@@ -1515,15 +1718,27 @@
     }
     updatePdfPreview();
     openPopup(el.popupPdf);
+    // The preview box has no measurable width until the popup is visible.
+    setTimeout(fitPdfPreview, 80);
   }
 
   function getPdfExportOptions() {
+    const incArea = el.pdfIncludeArea ? el.pdfIncludeArea.checked : true;
+    const incVolume = el.pdfIncludeVolume ? el.pdfIncludeVolume.checked : true;
+    const incCategories = el.pdfIncludeCategories ? el.pdfIncludeCategories.checked : true;
+    const incNotes = el.pdfIncludeNotes ? el.pdfIncludeNotes.checked : true;
     return {
       title: el.pdfTitleInput.value || 'MEASUREMENT SHEET',
       client: el.pdfClientInput.value || 'General',
       includeSketch: el.pdfIncludeSketch ? el.pdfIncludeSketch.checked : true,
       includeSignature: el.pdfIncludeSign ? el.pdfIncludeSign.checked : true,
-      compact: el.pdfCompactView ? el.pdfCompactView.checked : true,
+      compact: true,
+      includeArea: incArea,
+      includeVolume: incVolume,
+      includeAreaVolume: incArea || incVolume,
+      includeCategories: incCategories,
+      includeNotes: incNotes,
+      commonUnit: el.pdfCommonUnit ? el.pdfCommonUnit.value : '',
       companyName: companyBranding.name || '',
       companyContact: companyBranding.contact || '',
       companyLogo: companyBranding.logo || null
@@ -1535,22 +1750,60 @@
     saveBranding();
     const items = currentProject.items || [];
     const options = getPdfExportOptions();
-
-    // Render into preview container
-    el.pdfLivePreview.innerHTML = window.PDFGenerator.renderPrintDOM(
+    const sheetHtml = window.PDFGenerator.renderPrintDOM(
       currentProject,
       items,
       currentProject.sketchData,
       options
     );
+
+    // Wrap the sheet so it can be scaled to fit the preview column.
+    el.pdfLivePreview.innerHTML = `<div class="pdf-preview-scaler">${sheetHtml}</div>`;
 
     // Populate hidden #print-page-layout for native @media print
-    el.printPageLayout.innerHTML = window.PDFGenerator.renderPrintDOM(
-      currentProject,
-      items,
-      currentProject.sketchData,
-      options
-    );
+    el.printPageLayout.innerHTML = sheetHtml;
+
+    // Fit after the browser has laid out the new sheet.
+    requestAnimationFrame(fitPdfPreview);
+  }
+
+  // Scales the preview sheet down when the table is wider than the preview
+  // column (common in a narrow browser tab / tablet layout) instead of letting
+  // the table spill outside the sheet and get clipped.
+  function fitPdfPreview() {
+    const box = el.pdfLivePreview;
+    if (!box) return;
+    const scaler = box.querySelector('.pdf-preview-scaler');
+    const frame = scaler ? scaler.querySelector('.print-sheet-frame') : null;
+    if (!scaler || !frame) return;
+
+    // Reset any previous fit.
+    scaler.classList.remove('is-scaled');
+    scaler.style.width = '';
+    scaler.style.height = '';
+    frame.style.width = '';
+    frame.style.transform = '';
+
+    const available = box.clientWidth - 16; // preview box horizontal padding
+    if (available <= 0) return; // popup is hidden; openPdfModal will retry
+
+    const table = frame.querySelector('.print-table');
+    const frameStyle = getComputedStyle(frame);
+    const frameContentWidth = frame.clientWidth
+      - (parseFloat(frameStyle.paddingLeft) || 0)
+      - (parseFloat(frameStyle.paddingRight) || 0);
+    const tableWidth = table ? table.scrollWidth : 0;
+    const overflow = Math.max(0, tableWidth - frameContentWidth);
+    const targetWidth = frame.offsetWidth + overflow;
+    const scale = Math.max(0.55, Math.min(1, available / targetWidth));
+
+    if (scale < 0.999) {
+      scaler.classList.add('is-scaled');
+      frame.style.width = `${targetWidth}px`;
+      frame.style.transform = `scale(${scale})`;
+      scaler.style.width = `${Math.floor(targetWidth * scale)}px`;
+      scaler.style.height = `${Math.ceil(frame.offsetHeight * scale)}px`;
+    }
   }
 
   function executePrint() {
@@ -1569,73 +1822,144 @@
   function downloadCsvFile() {
     if (!currentProject) return;
     const items = currentProject.items || [];
-    window.PDFGenerator.downloadCSV(currentProject, items);
+    const options = getPdfExportOptions();
+    window.PDFGenerator.downloadCSV(currentProject, items, options);
     showToast('✓ CSV cut-list downloaded');
   }
 
   async function executeShareSheet() {
     if (!currentProject) return;
-    updatePdfPreview();
     const items = currentProject.items || [];
     const options = getPdfExportOptions();
-    const pdfBlob = window.PDFGenerator.generatePDFBlob(currentProject, items, options);
-    const textSummary = generateTextSummary(currentProject);
+    const textSummary = generateTextSummary(currentProject, options);
     const cleanTitle = (currentProject.title || 'Measurement_Sheet').replace(/[^a-zA-Z0-9_-]/g, '_');
     const filename = `${cleanTitle}.pdf`;
 
     if (navigator.share) {
+      // Direct share invocation inside user activation
+      let shareData = {
+        title: currentProject.title || 'Measurement Sheet',
+        text: textSummary
+      };
+
+      // Try file sharing if supported by browser/platform
       try {
-        const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
-        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-          await navigator.share({
-            title: currentProject.title,
-            text: textSummary,
-            files: [pdfFile]
-          });
-          showToast('✓ Shared via system sheet');
-          return;
+        if (typeof File !== 'undefined' && navigator.canShare) {
+          const pdfBlob = window.PDFGenerator.generatePDFBlob(currentProject, items, options);
+          const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+          if (navigator.canShare({ files: [pdfFile] })) {
+            shareData.files = [pdfFile];
+          }
         }
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.warn('File share failed, falling back to text share:', err);
+      } catch (fileErr) {
+        console.warn('File share check fallback:', fileErr);
       }
 
       try {
-        await navigator.share({
-          title: currentProject.title,
-          text: textSummary
-        });
-        showToast('✓ Shared text summary');
+        await navigator.share(shareData);
+        showToast('✓ Shared via system sheet');
         return;
       } catch (err) {
-        if (err.name === 'AbortError') return;
+        if (err.name === 'AbortError') {
+          // User closed the native mobile share sheet, do not trigger fallback download
+          return;
+        }
+        // If file sharing was rejected, retry sharing just text
+        if (shareData.files) {
+          try {
+            await navigator.share({
+              title: currentProject.title || 'Measurement Sheet',
+              text: textSummary
+            });
+            showToast('✓ Shared text summary');
+            return;
+          } catch (textErr) {
+            if (textErr.name === 'AbortError') return;
+            console.warn('Text share failed:', textErr);
+          }
+        }
       }
     }
 
     // Desktop or non-share fallback
     copyTextSummary();
     window.PDFGenerator.downloadPDF(currentProject, items, options);
+    showToast('✓ Summary copied & PDF downloaded');
   }
 
-  function generateTextSummary(proj) {
+  function generateTextSummary(proj, options = {}) {
     const items = proj.items || [];
+    const opts = { ...getPdfExportOptions(), ...options };
+    const commonUnit = opts.commonUnit || '';
     let text = `📐 ${proj.title.toUpperCase()}\n`;
     text += `Date: ${new Date().toLocaleDateString()}\n`;
     if (proj.client) text += `Client: ${proj.client}\n`;
-    if (companyBranding.name) text += `Contractor: ${companyBranding.name}\n`;
+    if (companyBranding && companyBranding.name) text += `Contractor: ${companyBranding.name}\n`;
     text += `------------------------------------\n`;
+
+    const areaByUnit = {};
+    const volByUnit = {};
 
     items.forEach((item, idx) => {
       const num = String(idx + 1).padStart(2, '0');
       const v = item.verified ? ' [✓]' : '';
-      text += `${num}. ${item.label}: ${item.value} ${item.unit || ''}${v}`;
-      if (item.notes) text += ` (${item.notes})`;
+      const display = window.PDFGenerator.getDisplayItem(item, commonUnit);
+      const u = display.unit || item.unit || '';
+
+      if (display.area !== null) {
+        areaByUnit[u] = (areaByUnit[u] || 0) + display.area;
+      }
+      if (display.volume !== null) {
+        volByUnit[u] = (volByUnit[u] || 0) + display.volume;
+      }
+
+      let extra = '';
+      if (opts.includeArea && display.area !== null) {
+        extra += ` [Area: ${window.PDFGenerator.formatNumber(display.area)} ${u}²]`;
+      }
+      if (opts.includeVolume && display.volume !== null) {
+        extra += ` [Vol: ${window.PDFGenerator.formatNumber(display.volume)} ${u}³]`;
+      }
+
+      text += `${num}. ${item.label}: ${display.value} ${u}${extra}${v}`;
+      if (opts.includeCategories && item.category) text += ` [${item.category}]`;
+      if (opts.includeNotes && item.notes) text += ` (${item.notes})`;
       text += `\n`;
     });
 
     text += `------------------------------------\n`;
     text += `Total items: ${items.length}\n`;
+
+    if (opts.includeArea) {
+      const aTotals = Object.entries(areaByUnit).map(([u, val]) => `${window.PDFGenerator.formatNumber(val)} ${u}²`);
+      if (aTotals.length > 0) text += `Total Area: ${aTotals.join(', ')}\n`;
+    }
+    if (opts.includeVolume) {
+      const vTotals = Object.entries(volByUnit).map(([u, val]) => `${window.PDFGenerator.formatNumber(val)} ${u}³`);
+      if (vTotals.length > 0) text += `Total Volume: ${vTotals.join(', ')}\n`;
+    }
+
     return text;
+  }
+
+  function setCopyButtonFeedback() {
+    if (!el.btnCopyTextSummary) return;
+    const btn = el.btnCopyTextSummary;
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span style="color: #22c55e; font-weight: 600;">✓ Copied!</span>
+    `;
+    btn.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+    btn.style.backgroundColor = 'rgba(34, 197, 94, 0.1)';
+
+    setTimeout(() => {
+      btn.innerHTML = originalHTML;
+      btn.style.borderColor = '';
+      btn.style.backgroundColor = '';
+    }, 2000);
   }
 
   function copyTextSummary() {
@@ -1645,9 +1969,14 @@
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         showToast('✓ Measurement summary copied to clipboard');
-      }).catch(() => fallbackCopy(text));
+        setCopyButtonFeedback();
+      }).catch(() => {
+        fallbackCopy(text);
+        setCopyButtonFeedback();
+      });
     } else {
       fallbackCopy(text);
+      setCopyButtonFeedback();
     }
   }
 
@@ -1659,6 +1988,84 @@
     document.execCommand('copy');
     document.body.removeChild(ta);
     showToast('✓ Copied to clipboard');
+  }
+
+  function handleCsvFileImport(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!currentProject) {
+      showToast('⚠️ No active sheet selected');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const csvContent = event.target.result;
+        const parsedItems = window.PDFGenerator.parseCSV(csvContent);
+
+        if (!parsedItems || parsedItems.length === 0) {
+          showToast('⚠️ No valid measurement rows found in CSV');
+          e.target.value = '';
+          return;
+        }
+
+        if (!currentProject.items) {
+          currentProject.items = [];
+        }
+
+        const append = !el.checkAppendTemplate || el.checkAppendTemplate.checked;
+        if (!append && currentProject.items.length > 0) {
+          if (!confirm('Replace existing measurements with imported CSV items?')) {
+            e.target.value = '';
+            return;
+          }
+          currentProject.items = [];
+        }
+
+        parsedItems.forEach(item => {
+          currentProject.items.push({
+            id: 'm_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
+            label: item.label,
+            value: item.value,
+            unit: item.unit || 'cm',
+            category: item.category || 'General',
+            notes: item.notes || '',
+            verified: !!item.verified,
+            createdAt: new Date().toISOString()
+          });
+        });
+
+        currentProject.updatedAt = new Date().toISOString();
+        saveData();
+        renderAll();
+        showToast(`✓ Imported ${parsedItems.length} items from CSV`);
+
+        // Close templates popup if open
+        if (el.popupTemplates && el.popupTemplates.classList.contains('active')) {
+          closeAllPopups();
+        }
+
+        // If PDF preview modal is open, refresh preview
+        if (el.popupPdf && el.popupPdf.classList.contains('active')) {
+          updatePdfPreview();
+        }
+      } catch (err) {
+        console.error('CSV import error:', err);
+        showToast('⚠️ Error parsing CSV file');
+      } finally {
+        e.target.value = '';
+      }
+    };
+
+    reader.onerror = () => {
+      showToast('⚠️ Failed to read CSV file');
+      e.target.value = '';
+    };
+
+    reader.readAsText(file);
   }
 
   // ==========================================================================
@@ -1823,9 +2230,11 @@
 
   function initConverter() {
     const convert = () => {
-      const val = parseFloat(el.convFromVal.value) || 0;
+      const rawVal = el.convFromVal.value;
       const from = el.convFromUnit.value;
       const to = el.convToUnit.value;
+      let val = parseFractionOrDecimal(rawVal, from);
+      if (isNaN(val)) val = 0;
 
       const toMm = {
         mm: 1,
@@ -1864,9 +2273,9 @@
     };
 
     const calculateGeometry = () => {
-      const l = parseFloat(el.calcL.value) || 0;
-      const w = parseFloat(el.calcW.value) || 0;
-      const h = parseFloat(el.calcH.value) || 0;
+      const l = parseFractionOrDecimal(el.calcL.value) || 0;
+      const w = parseFractionOrDecimal(el.calcW.value) || 0;
+      const h = parseFractionOrDecimal(el.calcH.value) || 0;
 
       const area = l * w;
       const perim = 2 * (l + w);
@@ -1921,13 +2330,13 @@
     const convertValuePart = (valStr, fromUnit, toUnit) => {
       if (fromUnit === toUnit) return valStr;
 
-      if (valStr.includes('×') || valStr.includes('x') || valStr.includes('X')) {
-        return valStr.split(/[×xX]/)
+      if (valStr.includes('×') || (valStr.search(/\s+[xX]\s+/) !== -1)) {
+        return valStr.split(/\s*[×xX]\s*/)
           .map(part => convertValuePart(part.trim(), fromUnit, toUnit))
           .join(' × ');
       }
 
-      const num = parseFractionOrDecimal(valStr);
+      const num = parseFractionOrDecimal(valStr, fromUnit);
       if (isNaN(num) || num === 0) return valStr;
 
       const meters = num * (toMeters[fromUnit] || 0.01);
@@ -1994,11 +2403,32 @@
       });
     }
 
-    // Composite inputs calculations & unit change
-    if (el.inputDimL) el.inputDimL.addEventListener('input', updateCompositeCalc);
-    if (el.inputDimW) el.inputDimW.addEventListener('input', updateCompositeCalc);
-    if (el.inputDimH) el.inputDimH.addEventListener('input', updateCompositeCalc);
-    if (el.selectItemUnit) el.selectItemUnit.addEventListener('change', updateCompositeCalc);
+    // Composite inputs calculations & unit change & live CAD hint
+    const onDimInputChange = (inputEl) => {
+      updateCadHint(inputEl);
+      if (activeDimMode !== '1d') updateCompositeCalc();
+    };
+
+    if (el.inputItemValue) el.inputItemValue.addEventListener('input', () => onDimInputChange(el.inputItemValue));
+    if (el.inputDimL) el.inputDimL.addEventListener('input', () => onDimInputChange(el.inputDimL));
+    if (el.inputDimW) el.inputDimW.addEventListener('input', () => onDimInputChange(el.inputDimW));
+    if (el.inputDimH) el.inputDimH.addEventListener('input', () => onDimInputChange(el.inputDimH));
+    if (el.selectItemUnit) el.selectItemUnit.addEventListener('change', () => {
+      const newUnit = el.selectItemUnit.value;
+      const converted = convertMeasurementInputs(lastSelectedUnit, newUnit);
+      lastSelectedUnit = newUnit;
+      syncUnitDisplay();
+
+      updateCadHint();
+      updateCompositeCalc();
+
+      if (converted > 0) {
+        // Replace any previous conversion toast instead of stacking them.
+        document.querySelectorAll('.toast-conversion').forEach(t => t.remove());
+        const toast = showToast(`✓ Converted to ${UNIT_LABELS[newUnit] || newUnit}`, 1400);
+        if (toast) toast.classList.add('toast-conversion');
+      }
+    });
 
     // Save current sheet as custom template
     if (el.btnSaveSheetAsTemplate) {
@@ -2103,33 +2533,69 @@
     }
 
     // Track active/focused input among 1D, L, W, H for helpers & keyboard
-    let lastActiveDimInput = el.inputItemValue;
+    lastActiveDimInput = el.inputItemValue;
     [el.inputItemValue, el.inputDimL, el.inputDimW, el.inputDimH].forEach(inputEl => {
       if (!inputEl) return;
       inputEl.addEventListener('focus', () => {
         lastActiveDimInput = inputEl;
+        updateCadHint(inputEl);
       });
     });
 
-    // Quick numeric increment / fraction buttons (shared across 1D, 2D, 3D)
+    function insertAtCursor(input, text) {
+      if (!input) return;
+      const start = (input.selectionStart != null) ? input.selectionStart : input.value.length;
+      const end = (input.selectionEnd != null) ? input.selectionEnd : input.value.length;
+      const val = input.value;
+      input.value = val.substring(0, start) + text + val.substring(end);
+      const newPos = start + text.length;
+      input.setSelectionRange(newPos, newPos);
+    }
+
+    // Quick numeric increment / fraction / CAD buttons (shared across 1D, 2D, 3D)
     document.querySelectorAll('.quick-value-helpers button').forEach(btn => {
       btn.addEventListener('click', () => {
-        const inc = btn.dataset.inc;
-        const frac = btn.dataset.frac;
         const target = (activeDimMode === '1d') ? el.inputItemValue : (lastActiveDimInput || el.inputDimL);
         if (!target) return;
         const current = target.value.trim();
+        const unit = (el.selectItemUnit && el.selectItemUnit.value) ? el.selectItemUnit.value : 'in';
+
+        // Immediate CAD evaluate button (=)
+        if (btn.id === 'btnEvalCadExpr') {
+          if (window.CADParser) {
+            target.value = window.CADParser.resolveExpressionString(current, unit);
+            target.focus();
+            updateCadHint(target);
+            if (activeDimMode !== '1d') updateCompositeCalc();
+          }
+          return;
+        }
+
+        // CAD direct keys (', ", +, -)
+        const cad = btn.dataset.cad;
+        if (cad) {
+          target.focus();
+          insertAtCursor(target, cad);
+          updateCadHint(target);
+          if (activeDimMode !== '1d') updateCompositeCalc();
+          return;
+        }
+
+        const inc = btn.dataset.inc;
+        const frac = btn.dataset.frac;
 
         if (frac) {
-          target.value = current ? `${current.replace(/\s*[¼½¾\d\/]+$/, '')}${frac}`.trim() : frac.trim();
+          target.value = current ? `${current.replace(/\s*[¼½¾⅛⅜\d\/]+$/, '')}${frac}`.trim() : frac.trim();
         } else if (inc) {
           const delta = parseFloat(inc) || 0;
-          const val = parseFractionOrDecimal(current);
+          const val = parseFractionOrDecimal(current, unit);
           const base = isNaN(val) ? 0 : val;
           const next = Math.max(0, Math.round((base + delta) * 10) / 10);
           target.value = next;
         }
 
+        target.focus();
+        updateCadHint(target);
         if (activeDimMode !== '1d') {
           updateCompositeCalc();
         }
@@ -2211,7 +2677,11 @@
     if (el.pdfContactInput) el.pdfContactInput.addEventListener('input', updatePdfPreview);
     el.pdfIncludeSketch.addEventListener('change', updatePdfPreview);
     el.pdfIncludeSign.addEventListener('change', updatePdfPreview);
-    if (el.pdfCompactView) el.pdfCompactView.addEventListener('change', updatePdfPreview);
+    if (el.pdfIncludeArea) el.pdfIncludeArea.addEventListener('change', updatePdfPreview);
+    if (el.pdfIncludeVolume) el.pdfIncludeVolume.addEventListener('change', updatePdfPreview);
+    if (el.pdfIncludeCategories) el.pdfIncludeCategories.addEventListener('change', updatePdfPreview);
+    if (el.pdfIncludeNotes) el.pdfIncludeNotes.addEventListener('change', updatePdfPreview);
+    if (el.pdfCommonUnit) el.pdfCommonUnit.addEventListener('change', updatePdfPreview);
 
     // Share & export actions
     if (el.btnShareSheet) el.btnShareSheet.addEventListener('click', executeShareSheet);
@@ -2224,8 +2694,22 @@
     el.btnExportData.addEventListener('click', exportBackup);
     el.importFileInput.addEventListener('change', importBackup);
 
+    // CSV Import actions
+    if (el.importCsvInput) el.importCsvInput.addEventListener('change', handleCsvFileImport);
+    if (el.importCsvInputTemplate) el.importCsvInputTemplate.addEventListener('change', handleCsvFileImport);
+    if (el.importCsvInputTemplateFooter) el.importCsvInputTemplateFooter.addEventListener('change', handleCsvFileImport);
+    if (el.importCsvInputEmpty) el.importCsvInputEmpty.addEventListener('change', handleCsvFileImport);
+
     // Ensure printable DOM is ready before any print action
     window.addEventListener('beforeprint', updatePdfPreview);
+
+    // Re-fit the preview when the browser tab / window is resized while the
+    // PDF popup is open (e.g. rotating a tablet or resizing a desktop tab).
+    window.addEventListener('resize', () => {
+      if (el.popupPdf && el.popupPdf.classList.contains('active')) {
+        fitPdfPreview();
+      }
+    });
   }
 
   // ==========================================================================
@@ -2319,7 +2803,19 @@
       toast.style.transition = 'all 0.2s ease';
       setTimeout(() => toast.remove(), 200);
     }, duration);
+
+    return toast;
   }
+
+  // Expose key app interface helpers for testing and external integrations
+  window.SizeNotesApp = {
+    getCurrentProject: () => currentProject,
+    getProjects: () => projects,
+    generateTextSummary,
+    executeShareSheet,
+    copyTextSummary,
+    handleCsvFileImport
+  };
 
   // --- Run on Load ---
   if (document.readyState === 'loading') {

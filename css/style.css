@@ -1233,6 +1233,7 @@ body {
   gap: 10px;
   background: var(--bg-surface);
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 /* Form Controls in Popups */
@@ -1293,6 +1294,10 @@ body {
   .pdf-options-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+}
+
+.pdf-common-unit-group {
+  grid-column: 1 / -1;
 }
 
 /* Calculator Grid */
@@ -1900,31 +1905,181 @@ details[open] .branding-arrow {
   padding: 8px;
   font-size: 0.8rem;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-  min-height: 280px;
+  min-height: 200px;
   max-height: 520px;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   border: 1px solid var(--border-color);
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
 }
 
-/* Outer Document Architectural Frame */
+/* PDF Modal Sheet Container on Mobile */
+#popupPdf .popup-sheet {
+  height: 92vh;
+  max-height: 94vh;
+}
+
+/* PDF Modal Footer Responsive Layout (Mobile First) */
+.pdf-modal-footer {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 10px 14px max(12px, env(safe-area-inset-bottom)) 14px !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: var(--bg-surface) !important;
+  border-top: 1px solid var(--border-color) !important;
+  z-index: 10;
+}
+
+.pdf-footer-row {
+  display: flex !important;
+  width: 100% !important;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.pdf-footer-primary-row {
+  gap: 8px;
+}
+
+.pdf-footer-primary-row .btn {
+  height: 42px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  border-radius: var(--radius-md);
+}
+
+.pdf-footer-primary-row #btnExecutePrint {
+  flex: 1.3;
+}
+
+.pdf-footer-primary-row #btnShareSheet {
+  flex: 1;
+}
+
+.pdf-footer-secondary-row {
+  gap: 6px;
+}
+
+.pdf-footer-secondary-row .btn {
+  height: 36px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+}
+
+.pdf-footer-secondary-row #btnDownloadPdf {
+  flex: 0.9;
+}
+
+.pdf-footer-secondary-row #btnDownloadCsv {
+  flex: 0.9;
+}
+
+.pdf-footer-secondary-row #btnCopyTextSummary {
+  flex: 1.3;
+}
+
+.pdf-footer-secondary-row .btn-close-modal {
+  flex: 0.8;
+}
+
+/* Small mobile screens (< 360px wide, e.g. iPhone SE) */
+@media (max-width: 359px) {
+  .pdf-modal-footer {
+    padding: 8px 10px max(10px, env(safe-area-inset-bottom)) 10px !important;
+    gap: 6px !important;
+  }
+  .pdf-footer-primary-row .btn {
+    height: 38px;
+    font-size: 0.82rem;
+    gap: 4px;
+  }
+  .pdf-footer-secondary-row {
+    gap: 4px;
+  }
+  .pdf-footer-secondary-row .btn {
+    height: 32px;
+    font-size: 0.72rem;
+    padding: 0 4px;
+    gap: 3px;
+  }
+  .pdf-footer-secondary-row .btn svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* Desktop & Tablet viewports (>= 680px) */
+@media (min-width: 680px) {
+  .pdf-modal-footer {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 18px !important;
+  }
+  .pdf-footer-primary-row {
+    flex: 1.2 !important;
+    width: auto !important;
+  }
+  .pdf-footer-secondary-row {
+    flex: 1.8 !important;
+    width: auto !important;
+  }
+}
+
+/* Wrapper that scales the sheet down when the preview column is narrower than
+   the printed table, so the whole page stays visible instead of being clipped. */
+.pdf-preview-scaler {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.pdf-preview-scaler.is-scaled {
+  overflow: hidden;
+}
+
+.pdf-preview-scaler.is-scaled .print-sheet-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
+/* Outer Document Clean Sheet Container */
 .print-sheet-frame {
   background: #ffffff;
   color: #0f172a;
-  border: 1.5px solid #0f172a;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
   padding: 12px 14px 10px 14px;
   box-sizing: border-box;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   position: relative;
 }
 
 .print-page-header {
-  border-bottom: 1.5px solid #0f172a;
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 5px;
   margin-bottom: 6px;
   display: flex;
@@ -1974,10 +2129,10 @@ details[open] .branding-arrow {
 
 .print-meta-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   gap: 0;
   background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
   border-radius: 3px;
   margin-bottom: 6px;
   overflow: hidden;
@@ -1986,7 +2141,7 @@ details[open] .branding-arrow {
 .print-meta-item {
   font-size: 0.72rem;
   padding: 3.5px 6px;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #f1f5f9;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -2070,6 +2225,16 @@ details[open] .branding-arrow {
 
 .print-sheet-frame.is-compact .print-val-cell {
   font-size: 0.78rem;
+}
+
+.print-sheet-frame.is-compact .print-area-cell,
+.print-sheet-frame.is-compact .print-vol-cell {
+  font-size: 0.68rem;
+}
+
+.print-sheet-frame.is-compact .print-geom-totals {
+  font-size: 0.62rem;
+  margin-top: 1px;
 }
 
 .print-sheet-frame.is-compact .print-sketch-column {
@@ -2159,13 +2324,12 @@ details[open] .branding-arrow {
   padding: 6px;
 }
 
-/* Printable Table with Architectural Clean Borders */
+/* Printable Table with Clean, Modern Minimal Borders */
 .print-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
   font-size: 0.78rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
   overflow: hidden;
   background: #ffffff;
@@ -2175,14 +2339,13 @@ details[open] .branding-arrow {
   background: #0f172a;
   color: #ffffff;
   font-weight: 700;
-  padding: 7px 9px;
+  padding: 6px 8px;
   text-align: left;
-  font-size: 0.70rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   border: none;
-  border-bottom: 1.5px solid #0f172a;
-  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid #0f172a;
 }
 
 .print-table th:last-child {
@@ -2190,10 +2353,9 @@ details[open] .branding-arrow {
 }
 
 .print-table td {
-  padding: 6px 9px;
+  padding: 5px 8px;
   border: none;
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid #edf2f7;
+  border-bottom: 1px solid #f1f5f9;
   font-size: 0.78rem;
   color: #1e293b;
 }
@@ -2226,12 +2388,48 @@ details[open] .branding-arrow {
   text-align: center;
 }
 
+.print-area-cell {
+  font-weight: 700;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-align: right;
+  color: #0284c7;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-vol-cell {
+  font-weight: 700;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-align: right;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-unit-mini {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #475569;
+  margin-left: 2px;
+}
+
+.print-na {
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.print-geom-totals {
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
 .print-summary-box {
-  margin-top: 14px;
+  margin-top: 10px;
   display: flex;
   justify-content: space-between;
-  border-top: 2px solid #0f172a;
-  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
   page-break-inside: avoid;
 }
 
@@ -2248,12 +2446,12 @@ details[open] .branding-arrow {
 
 .print-sign-line {
   width: 120px;
-  border-top: 1.5px solid #0f172a;
+  border-top: 1px solid #94a3b8;
   text-align: center;
   font-size: 0.68rem;
-  padding-top: 5px;
-  margin-top: 24px;
-  color: #475569;
+  padding-top: 4px;
+  margin-top: 18px;
+  color: #64748b;
 }
 
 .print-footer-tag {
@@ -2424,6 +2622,7 @@ details[open] .branding-arrow {
   letter-spacing: 0.05em;
   user-select: none;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .dim-section-title svg {
@@ -2442,6 +2641,7 @@ details[open] .branding-arrow {
   padding: 3px 8px 3px 10px;
   height: 32px;
   box-sizing: border-box;
+  flex-shrink: 0;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -2460,18 +2660,60 @@ details[open] .branding-arrow {
   cursor: pointer;
 }
 
-.dim-unit-select {
-  background: transparent;
-  border: none;
+.dim-unit-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Compact label shown in the pill; the transparent <select> overlays it so the
+   native dropdown can still show the full, grouped unit names. */
+.dim-unit-value {
   color: var(--text-primary);
   font-size: 0.86rem;
   font-weight: 700;
-  font-family: inherit;
-  outline: none;
-  cursor: pointer;
-  padding: 0 2px 0 0;
+  padding-right: 15px;
+  white-space: nowrap;
+  pointer-events: none;
+  min-width: 2.4em;
+}
+
+.dim-unit-chevron {
+  position: absolute;
+  right: 0;
+  color: var(--text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.dim-unit-pill:hover .dim-unit-chevron,
+.dim-unit-pill:focus-within .dim-unit-chevron {
+  color: var(--accent-primary);
+}
+
+.dim-unit-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: transparent;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
   margin: 0;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.dim-unit-select::-ms-expand {
+  display: none;
 }
 
 /* Dimension Mode Tabs (1D / 2D / 3D) */
@@ -2640,6 +2882,73 @@ details[open] .branding-arrow {
   width: 100%;
   box-sizing: border-box;
   word-break: break-word;
+}
+
+/* Live CAD Expression Hint */
+.cad-calc-hint {
+  margin-top: 6px;
+  margin-bottom: 4px;
+  padding: 6px 10px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+  box-sizing: border-box;
+}
+
+.cad-calc-hint-val {
+  color: var(--accent-primary);
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cad-calc-hint-btn {
+  background: var(--accent-primary);
+  color: #0f172a;
+  border: none;
+  border-radius: var(--radius-xs, 4px);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.cad-calc-hint-btn:hover {
+  opacity: 0.9;
+}
+
+.helper-cad-key {
+  border-color: rgba(56, 189, 248, 0.35);
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.helper-cad-key:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-primary);
+}
+
+.helper-eval-btn {
+  background: var(--accent-primary);
+  color: #0f172a;
+  border-color: var(--accent-primary);
+  font-weight: 800;
+}
+
+.helper-eval-btn:hover {
+  opacity: 0.9;
+  color: #0f172a;
+  background: var(--accent-primary);
 }
 
 /* Compact screens (small mobile: max-width: 380px) */
@@ -3181,49 +3490,110 @@ details[open] .branding-arrow {
   #sketchCanvas {
     height: 260px;
   }
-  .pdf-preview-box {
-    max-height: 380px;
-  }
 }
 
 /* Tablet & Desktop PDF Modal Layout */
 @media (min-width: 680px) {
   #popupPdf .popup-sheet {
-    max-width: 820px;
-    height: 86vh;
-    max-height: 86vh;
+    max-width: 860px;
+    height: 90vh;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
   }
   #popupPdf .popup-body {
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 0;
     overflow: hidden;
-    padding: 16px 20px;
+    padding: 14px 20px;
   }
   #popupPdf .pdf-modal-layout {
     display: grid;
-    grid-template-columns: 290px 1fr;
+    grid-template-columns: 290px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 16px;
     height: 100%;
+    min-height: 0;
+    max-height: 100%;
     align-items: stretch;
   }
   #popupPdf .pdf-controls-col {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
     overflow-y: auto;
-    padding-right: 4px;
+    overflow-x: hidden;
+    padding-right: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent !important;
+  }
+  #popupPdf .pdf-controls-col::-webkit-scrollbar {
+    display: block !important;
+    width: 6px !important;
+  }
+  #popupPdf .pdf-controls-col::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45) !important;
+    border-radius: 9999px !important;
   }
   #popupPdf .pdf-preview-col {
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-width: 0;
+    min-height: 0;
     height: 100%;
+    max-height: 100%;
+    overflow: hidden;
   }
   #popupPdf .pdf-preview-box {
-    flex: 1;
-    min-height: 340px;
-    max-height: none;
-    height: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: 100%;
+    height: 0;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent !important;
+  }
+  #popupPdf .pdf-preview-box::-webkit-scrollbar {
+    display: block !important;
+    width: 6px !important;
+    height: 6px !important;
+  }
+  #popupPdf .pdf-preview-box::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45) !important;
+    border-radius: 9999px !important;
+  }
+  #popupPdf .pdf-preview-box::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.75) !important;
+  }
+}
+
+/* Tablet Horizontal / Landscape Viewports: optimize vertical padding so preview gets maximum height */
+@media (min-width: 680px) and (orientation: landscape), (min-width: 680px) and (max-height: 750px) {
+  #popupPdf .popup-sheet {
+    max-width: 900px;
+    height: 94vh;
+    max-height: 94vh;
+  }
+  #popupPdf .popup-header {
+    padding: 10px 20px 8px 20px;
+  }
+  #popupPdf .popup-body {
+    padding: 8px 18px;
+  }
+  #popupPdf .popup-footer {
+    padding: 8px 18px 10px 18px;
+  }
+  #popupPdf .pdf-modal-layout {
+    grid-template-columns: 270px minmax(0, 1fr);
+    gap: 12px;
   }
 }
 
@@ -3269,26 +3639,26 @@ details[open] .branding-arrow {
 
   @page {
     size: A4 portrait;
-    margin: 6mm 8mm 6mm 8mm;
+    margin: 8mm 8mm 8mm 8mm;
   }
 
   .print-sheet-frame {
-    border: 1.5px solid #000000 !important;
-    border-radius: 4px !important;
-    padding: 10px 14px 8px 14px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
     box-shadow: none !important;
     background: #ffffff !important;
     page-break-inside: avoid;
   }
 
   .print-company-bar {
-    border-bottom: 1px solid #cbd5e1 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
     padding-bottom: 4px !important;
     margin-bottom: 5px !important;
   }
 
   .print-page-header {
-    border-bottom: 1.5px solid #000000 !important;
+    border-bottom: 1px solid #cbd5e1 !important;
     padding-bottom: 4px !important;
     margin-bottom: 6px !important;
     gap: 8px !important;
@@ -3318,8 +3688,9 @@ details[open] .branding-arrow {
 
   .print-meta-grid {
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    border: 1px solid #000000 !important;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)) !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 3px !important;
     background: #fafafa !important;
     margin-bottom: 6px !important;
     -webkit-print-color-adjust: exact;
@@ -3328,7 +3699,7 @@ details[open] .branding-arrow {
 
   .print-meta-item {
     padding: 3px 6px !important;
-    border-right: 1px solid #e0e0e0 !important;
+    border-right: 1px solid #f1f5f9 !important;
     border-bottom: none !important;
   }
 
@@ -3361,12 +3732,13 @@ details[open] .branding-arrow {
 
   .print-sketch-column {
     width: 160px;
-    border: 1px solid #000000 !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 3px !important;
   }
 
   .print-sketch-title {
-    border-bottom: 1px solid #000000 !important;
-    background: #f0f0f0 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    background: #f8fafc !important;
     font-size: 6.5pt !important;
     padding: 3px 6px !important;
     -webkit-print-color-adjust: exact;
@@ -3379,16 +3751,19 @@ details[open] .branding-arrow {
 
   .print-table {
     font-size: 7.5pt;
-    border: 1px solid #000000 !important;
+    border-collapse: collapse !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 3px !important;
   }
 
   .print-table th {
     font-size: 7pt;
     padding: 3.5px 5px;
-    background: #000000 !important;
+    background: #0f172a !important;
     color: #ffffff !important;
-    border-bottom: 1.5px solid #000000 !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border: none !important;
+    border-bottom: 1px solid #0f172a !important;
+    border-right: none !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -3400,8 +3775,9 @@ details[open] .branding-arrow {
   .print-table td {
     font-size: 7.5pt;
     padding: 3px 5px;
-    border-bottom: 1px solid #d1d5db !important;
-    border-right: 1px solid #e5e7eb !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-right: none !important;
     color: #000000 !important;
   }
 
@@ -3426,10 +3802,30 @@ details[open] .branding-arrow {
     print-color-adjust: exact;
   }
 
+  .print-area-cell {
+    font-size: 7.2pt !important;
+    color: #0284c7 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-vol-cell {
+    font-size: 7.2pt !important;
+    color: #b45309 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-geom-totals {
+    font-size: 6.8pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .print-summary-box {
     margin-top: 6px !important;
     padding-top: 5px !important;
-    border-top: 1.5px solid #000000 !important;
+    border-top: 1px solid #e2e8f0 !important;
   }
 
   .print-totals {
@@ -3440,21 +3836,21 @@ details[open] .branding-arrow {
   .print-sign-line {
     width: 100px;
     margin-top: 16px;
-    border-top: 1.5px solid #000000 !important;
+    border-top: 1px solid #94a3b8 !important;
     font-size: 6.5pt !important;
-    color: #333333 !important;
+    color: #475569 !important;
   }
 
   .print-footer-tag {
     margin-top: 5px !important;
     padding-top: 3px !important;
     font-size: 6pt !important;
-    border-top: 1px dashed #cccccc !important;
+    border-top: 1px dashed #e2e8f0 !important;
   }
 
   /* Compact Mode Overrides for @media print */
   .print-sheet-frame.is-compact {
-    padding: 5mm 6mm 4mm 6mm !important;
+    padding: 0 !important;
   }
 
   .print-sheet-frame.is-compact .print-page-header {
