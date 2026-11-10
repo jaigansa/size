@@ -1908,10 +1908,10 @@ details[open] .branding-arrow {
   min-height: 200px;
   max-height: 520px;
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: auto;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
   border: 1px solid var(--border-color);
   box-sizing: border-box;
   width: 100%;
@@ -2047,25 +2047,6 @@ details[open] .branding-arrow {
   }
 }
 
-/* Wrapper that scales the sheet down when the preview column is narrower than
-   the printed table, so the whole page stays visible instead of being clipped. */
-.pdf-preview-scaler {
-  position: relative;
-  width: 100%;
-  min-width: 0;
-}
-
-.pdf-preview-scaler.is-scaled {
-  overflow: hidden;
-}
-
-.pdf-preview-scaler.is-scaled .print-sheet-frame {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: top left;
-}
-
 /* Outer Document Clean Sheet Container */
 .print-sheet-frame {
   background: #ffffff;
@@ -2076,6 +2057,8 @@ details[open] .branding-arrow {
   box-sizing: border-box;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   position: relative;
+  width: 100%;
+  min-width: min-content;
 }
 
 .print-page-header {

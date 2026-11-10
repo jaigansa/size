@@ -1718,8 +1718,6 @@
     }
     updatePdfPreview();
     openPopup(el.popupPdf);
-    // The preview box has no measurable width until the popup is visible.
-    setTimeout(fitPdfPreview, 80);
   }
 
   function getPdfExportOptions() {
@@ -1757,53 +1755,11 @@
       options
     );
 
-    // Wrap the sheet so it can be scaled to fit the preview column.
-    el.pdfLivePreview.innerHTML = `<div class="pdf-preview-scaler">${sheetHtml}</div>`;
+    // Render directly into preview box for full native scrolling
+    el.pdfLivePreview.innerHTML = sheetHtml;
 
     // Populate hidden #print-page-layout for native @media print
     el.printPageLayout.innerHTML = sheetHtml;
-
-    // Fit after the browser has laid out the new sheet.
-    requestAnimationFrame(fitPdfPreview);
-  }
-
-  // Scales the preview sheet down when the table is wider than the preview
-  // column (common in a narrow browser tab / tablet layout) instead of letting
-  // the table spill outside the sheet and get clipped.
-  function fitPdfPreview() {
-    const box = el.pdfLivePreview;
-    if (!box) return;
-    const scaler = box.querySelector('.pdf-preview-scaler');
-    const frame = scaler ? scaler.querySelector('.print-sheet-frame') : null;
-    if (!scaler || !frame) return;
-
-    // Reset any previous fit.
-    scaler.classList.remove('is-scaled');
-    scaler.style.width = '';
-    scaler.style.height = '';
-    frame.style.width = '';
-    frame.style.transform = '';
-
-    const available = box.clientWidth - 16; // preview box horizontal padding
-    if (available <= 0) return; // popup is hidden; openPdfModal will retry
-
-    const table = frame.querySelector('.print-table');
-    const frameStyle = getComputedStyle(frame);
-    const frameContentWidth = frame.clientWidth
-      - (parseFloat(frameStyle.paddingLeft) || 0)
-      - (parseFloat(frameStyle.paddingRight) || 0);
-    const tableWidth = table ? table.scrollWidth : 0;
-    const overflow = Math.max(0, tableWidth - frameContentWidth);
-    const targetWidth = frame.offsetWidth + overflow;
-    const scale = Math.max(0.55, Math.min(1, available / targetWidth));
-
-    if (scale < 0.999) {
-      scaler.classList.add('is-scaled');
-      frame.style.width = `${targetWidth}px`;
-      frame.style.transform = `scale(${scale})`;
-      scaler.style.width = `${Math.floor(targetWidth * scale)}px`;
-      scaler.style.height = `${Math.ceil(frame.offsetHeight * scale)}px`;
-    }
   }
 
   function executePrint() {
@@ -2702,14 +2658,6 @@
 
     // Ensure printable DOM is ready before any print action
     window.addEventListener('beforeprint', updatePdfPreview);
-
-    // Re-fit the preview when the browser tab / window is resized while the
-    // PDF popup is open (e.g. rotating a tablet or resizing a desktop tab).
-    window.addEventListener('resize', () => {
-      if (el.popupPdf && el.popupPdf.classList.contains('active')) {
-        fitPdfPreview();
-      }
-    });
   }
 
   // ==========================================================================
