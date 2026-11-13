@@ -180,6 +180,8 @@
     inputItemCategory: document.getElementById('inputItemCategory'),
     inputItemNotes: document.getElementById('inputItemNotes'),
     checkVerified: document.getElementById('checkVerified'),
+    verifiedCheckboxCard: document.getElementById('verifiedCheckboxCard'),
+    verifiedStatusPill: document.getElementById('verifiedStatusPill'),
     btnSaveMeasurement: document.getElementById('btnSaveMeasurement'),
     btnSaveAndNext: document.getElementById('btnSaveAndNext'),
     btnDeleteMeasurement: document.getElementById('btnDeleteMeasurement'),
@@ -232,6 +234,9 @@
     pdfIncludeVolume: document.getElementById('pdfIncludeVolume'),
     pdfIncludeCategories: document.getElementById('pdfIncludeCategories'),
     pdfIncludeNotes: document.getElementById('pdfIncludeNotes'),
+    pdfOnlyVerified: document.getElementById('pdfOnlyVerified'),
+    pdfVerifiedBadge: document.getElementById('pdfVerifiedBadge'),
+    chipPdfOnlyVerified: document.getElementById('chipPdfOnlyVerified'),
     pdfCommonUnit: document.getElementById('pdfCommonUnit'),
     brandingDetails: document.getElementById('brandingDetails'),
     pdfLivePreview: document.getElementById('pdfLivePreview'),
@@ -244,6 +249,7 @@
     // Templates Modal
     popupTemplates: document.getElementById('popupTemplates'),
     checkAppendTemplate: document.getElementById('checkAppendTemplate'),
+    templateCheckboxCard: document.getElementById('templateCheckboxCard'),
     btnSaveSheetAsTemplate: document.getElementById('btnSaveSheetAsTemplate'),
     customTemplatesContainer: document.getElementById('customTemplatesContainer'),
 
@@ -389,6 +395,9 @@
     initSketchPad();
     initConverter();
     bindGlobalListeners();
+    updateVerifiedCheckboxUI();
+    updateTemplateAppendCheckboxUI();
+    syncAllCheckboxChips();
     renderAll();
 
     // Register Service Worker for offline PWA
@@ -530,8 +539,12 @@
     const totalCount = items.length;
     const verifiedCount = items.filter(i => i.verified).length;
     
-    el.statItemCount.textContent = totalCount;
-    el.statVerifiedSub.textContent = `${verifiedCount} verified`;
+    if (el.statItemCount) el.statItemCount.textContent = totalCount;
+    if (el.statVerifiedSub) el.statVerifiedSub.textContent = `${verifiedCount} verified`;
+    if (el.pdfVerifiedBadge) {
+      el.pdfVerifiedBadge.textContent = `${verifiedCount}`;
+      el.pdfVerifiedBadge.title = `${verifiedCount} verified of ${totalCount} items`;
+    }
 
     // Detect primary unit
     const unitMap = {};
@@ -549,8 +562,8 @@
       }
     }
     const distinctUnits = Object.keys(unitMap).length;
-    el.statMainUnit.textContent = mainUnit;
-    el.statUnitCount.textContent = `${distinctUnits} unit${distinctUnits === 1 ? '' : 's'}`;
+    if (el.statMainUnit) el.statMainUnit.textContent = mainUnit;
+    if (el.statUnitCount) el.statUnitCount.textContent = `${distinctUnits} unit${distinctUnits === 1 ? '' : 's'}`;
 
     // Sum of primary unit items
     let sum = 0;
@@ -565,9 +578,9 @@
       }
     });
 
-    el.statTotalSum.textContent = sumCount > 0 ? (Math.round(sum * 100) / 100) : '0';
+    if (el.statTotalSum) el.statTotalSum.textContent = sumCount > 0 ? (Math.round(sum * 100) / 100) : '0';
     const categories = new Set(items.map(i => i.category || 'General'));
-    el.statGroupCount.textContent = `${categories.size} group${categories.size === 1 ? '' : 's'}`;
+    if (el.statGroupCount) el.statGroupCount.textContent = `${categories.size} group${categories.size === 1 ? '' : 's'}`;
   }
 
   function parseFractionOrDecimal(valStr, defaultUnit = 'in') {
@@ -1126,6 +1139,28 @@
     });
   }
 
+  function updateVerifiedCheckboxUI() {
+    if (!el.checkVerified) return;
+    const isChecked = el.checkVerified.checked;
+    const card = el.verifiedCheckboxCard || el.checkVerified.closest('.verified-checkbox-card');
+    if (card) {
+      if (isChecked) {
+        card.classList.add('is-checked');
+      } else {
+        card.classList.remove('is-checked');
+      }
+    }
+    if (el.verifiedStatusPill) {
+      if (isChecked) {
+        el.verifiedStatusPill.textContent = '✓ Verified';
+        el.verifiedStatusPill.classList.add('is-verified');
+      } else {
+        el.verifiedStatusPill.textContent = 'Unverified';
+        el.verifiedStatusPill.classList.remove('is-verified');
+      }
+    }
+  }
+
   function openAddMeasurementModal() {
     activeEditingItemId = null;
     el.measurementModalTitle.querySelector('span').textContent = 'Add Measurement';
@@ -1140,6 +1175,7 @@
     el.inputDimH.value = '';
     el.inputItemNotes.value = '';
     el.checkVerified.checked = false;
+    updateVerifiedCheckboxUI();
     setDimMode('1d');
     if (el.cadExprHint) el.cadExprHint.style.display = 'none';
 
@@ -1178,6 +1214,7 @@
     el.inputItemCategory.value = item.category || '';
     el.inputItemNotes.value = item.notes || '';
     el.checkVerified.checked = !!item.verified;
+    updateVerifiedCheckboxUI();
 
     // Detect if value is composite 2D or 3D
     const val = String(item.value || '').trim();
@@ -1312,6 +1349,7 @@
         el.inputDimH.value = '';
         el.inputItemNotes.value = '';
         el.checkVerified.checked = false;
+        updateVerifiedCheckboxUI();
         if (el.compositeCalcBadge) el.compositeCalcBadge.style.display = 'none';
         if (el.cadExprHint) el.cadExprHint.style.display = 'none';
         el.inputItemLabel.focus();
@@ -1709,6 +1747,21 @@
   // PDF, CSV & SHARE SHEET (Modal)
   // ==========================================================================
 
+  function syncCheckboxChip(chip) {
+    if (!chip) return;
+    const input = chip.querySelector('input[type="checkbox"]');
+    if (!input) return;
+    if (input.checked) {
+      chip.classList.add('is-checked');
+    } else {
+      chip.classList.remove('is-checked');
+    }
+  }
+
+  function syncAllCheckboxChips() {
+    document.querySelectorAll('.pdf-checkbox-chip').forEach(syncCheckboxChip);
+  }
+
   function openPdfModal() {
     if (!currentProject) return;
     el.pdfTitleInput.value = currentProject.title ? `MEASUREMENT SHEET: ${currentProject.title.toUpperCase()}` : 'MEASUREMENT SPECIFICATION SHEET';
@@ -1716,6 +1769,13 @@
     if (el.brandingDetails) {
       el.brandingDetails.open = !!(companyBranding.name || companyBranding.contact || companyBranding.logo);
     }
+    const items = currentProject.items || [];
+    const verifiedCount = items.filter(i => i.verified).length;
+    if (el.pdfVerifiedBadge) {
+      el.pdfVerifiedBadge.textContent = `${verifiedCount}`;
+      el.pdfVerifiedBadge.title = `${verifiedCount} verified of ${items.length} items`;
+    }
+    syncAllCheckboxChips();
     updatePdfPreview();
     openPopup(el.popupPdf);
   }
@@ -1725,6 +1785,7 @@
     const incVolume = el.pdfIncludeVolume ? el.pdfIncludeVolume.checked : true;
     const incCategories = el.pdfIncludeCategories ? el.pdfIncludeCategories.checked : true;
     const incNotes = el.pdfIncludeNotes ? el.pdfIncludeNotes.checked : true;
+    const onlyVerified = el.pdfOnlyVerified ? el.pdfOnlyVerified.checked : false;
     return {
       title: el.pdfTitleInput.value || 'MEASUREMENT SHEET',
       client: el.pdfClientInput.value || 'General',
@@ -1736,6 +1797,7 @@
       includeAreaVolume: incArea || incVolume,
       includeCategories: incCategories,
       includeNotes: incNotes,
+      onlyVerified: onlyVerified,
       commonUnit: el.pdfCommonUnit ? el.pdfCommonUnit.value : '',
       companyName: companyBranding.name || '',
       companyContact: companyBranding.contact || '',
@@ -1746,8 +1808,11 @@
   function updatePdfPreview() {
     if (!currentProject) return;
     saveBranding();
-    const items = currentProject.items || [];
     const options = getPdfExportOptions();
+    let items = currentProject.items || [];
+    if (options.onlyVerified) {
+      items = items.filter(i => i.verified);
+    }
     const sheetHtml = window.PDFGenerator.renderPrintDOM(
       currentProject,
       items,
@@ -1769,32 +1834,41 @@
 
   function downloadPdfFile() {
     if (!currentProject) return;
-    const items = currentProject.items || [];
     const options = getPdfExportOptions();
+    let items = currentProject.items || [];
+    if (options.onlyVerified) {
+      items = items.filter(i => i.verified);
+    }
     window.PDFGenerator.downloadPDF(currentProject, items, options);
-    showToast('✓ PDF download started');
+    showToast(options.onlyVerified ? '✓ Verified PDF download started' : '✓ PDF download started');
   }
 
   function downloadCsvFile() {
     if (!currentProject) return;
-    const items = currentProject.items || [];
     const options = getPdfExportOptions();
+    let items = currentProject.items || [];
+    if (options.onlyVerified) {
+      items = items.filter(i => i.verified);
+    }
     window.PDFGenerator.downloadCSV(currentProject, items, options);
-    showToast('✓ CSV cut-list downloaded');
+    showToast(options.onlyVerified ? '✓ Verified CSV cut-list downloaded' : '✓ CSV cut-list downloaded');
   }
 
   async function executeShareSheet() {
     if (!currentProject) return;
-    const items = currentProject.items || [];
     const options = getPdfExportOptions();
-    const textSummary = generateTextSummary(currentProject, options);
+    let items = currentProject.items || [];
+    if (options.onlyVerified) {
+      items = items.filter(i => i.verified);
+    }
+    const textSummary = generateTextSummary(currentProject, options, items);
     const cleanTitle = (currentProject.title || 'Measurement_Sheet').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filename = `${cleanTitle}.pdf`;
+    const filename = `${cleanTitle}${options.onlyVerified ? '_verified' : ''}.pdf`;
 
     if (navigator.share) {
       // Direct share invocation inside user activation
       let shareData = {
-        title: currentProject.title || 'Measurement Sheet',
+        title: `${currentProject.title || 'Measurement Sheet'}${options.onlyVerified ? ' (Verified)' : ''}`,
         text: textSummary
       };
 
@@ -1824,7 +1898,7 @@
         if (shareData.files) {
           try {
             await navigator.share({
-              title: currentProject.title || 'Measurement Sheet',
+              title: `${currentProject.title || 'Measurement Sheet'}${options.onlyVerified ? ' (Verified)' : ''}`,
               text: textSummary
             });
             showToast('✓ Shared text summary');
@@ -1838,16 +1912,19 @@
     }
 
     // Desktop or non-share fallback
-    copyTextSummary();
+    copyTextSummary(items, options);
     window.PDFGenerator.downloadPDF(currentProject, items, options);
     showToast('✓ Summary copied & PDF downloaded');
   }
 
-  function generateTextSummary(proj, options = {}) {
-    const items = proj.items || [];
+  function generateTextSummary(proj, options = {}, customItems = null) {
     const opts = { ...getPdfExportOptions(), ...options };
+    let items = customItems || proj.items || [];
+    if (opts.onlyVerified && !customItems) {
+      items = items.filter(i => i.verified);
+    }
     const commonUnit = opts.commonUnit || '';
-    let text = `📐 ${proj.title.toUpperCase()}\n`;
+    let text = `📐 ${proj.title.toUpperCase()}${opts.onlyVerified ? ' (VERIFIED ONLY)' : ''}\n`;
     text += `Date: ${new Date().toLocaleDateString()}\n`;
     if (proj.client) text += `Client: ${proj.client}\n`;
     if (companyBranding && companyBranding.name) text += `Contractor: ${companyBranding.name}\n`;
@@ -1918,9 +1995,9 @@
     }, 2000);
   }
 
-  function copyTextSummary() {
+  function copyTextSummary(customItems = null, customOptions = null) {
     if (!currentProject) return;
-    const text = generateTextSummary(currentProject);
+    const text = generateTextSummary(currentProject, customOptions || {}, customItems);
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
@@ -2028,8 +2105,21 @@
   // TEMPLATES (Starter Presets & Custom User Templates)
   // ==========================================================================
 
+  function updateTemplateAppendCheckboxUI() {
+    if (!el.checkAppendTemplate) return;
+    const card = el.templateCheckboxCard || el.checkAppendTemplate.closest('.template-checkbox-card');
+    if (card) {
+      if (el.checkAppendTemplate.checked) {
+        card.classList.add('is-checked');
+      } else {
+        card.classList.remove('is-checked');
+      }
+    }
+  }
+
   function openTemplatesModal() {
     renderCustomTemplates();
+    updateTemplateAppendCheckboxUI();
     openPopup(el.popupTemplates);
   }
 
@@ -2637,7 +2727,23 @@
     if (el.pdfIncludeVolume) el.pdfIncludeVolume.addEventListener('change', updatePdfPreview);
     if (el.pdfIncludeCategories) el.pdfIncludeCategories.addEventListener('change', updatePdfPreview);
     if (el.pdfIncludeNotes) el.pdfIncludeNotes.addEventListener('change', updatePdfPreview);
+    if (el.pdfOnlyVerified) el.pdfOnlyVerified.addEventListener('change', updatePdfPreview);
     if (el.pdfCommonUnit) el.pdfCommonUnit.addEventListener('change', updatePdfPreview);
+
+    // Sync all PDF checkbox chip visual active states on toggle
+    document.querySelectorAll('.pdf-checkbox-chip input[type="checkbox"]').forEach(input => {
+      input.addEventListener('change', (e) => {
+        syncCheckboxChip(e.target.closest('.pdf-checkbox-chip'));
+      });
+    });
+
+    // Checkbox UI listeners for Verification and Template Append cards
+    if (el.checkVerified) {
+      el.checkVerified.addEventListener('change', updateVerifiedCheckboxUI);
+    }
+    if (el.checkAppendTemplate) {
+      el.checkAppendTemplate.addEventListener('change', updateTemplateAppendCheckboxUI);
+    }
 
     // Share & export actions
     if (el.btnShareSheet) el.btnShareSheet.addEventListener('click', executeShareSheet);
@@ -2758,7 +2864,9 @@
   // Expose key app interface helpers for testing and external integrations
   window.SizeNotesApp = {
     getCurrentProject: () => currentProject,
+    setCurrentProject: (proj) => { currentProject = proj; renderAll(); saveData(); },
     getProjects: () => projects,
+    updatePdfPreview,
     generateTextSummary,
     executeShareSheet,
     copyTextSummary,

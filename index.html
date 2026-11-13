@@ -94,53 +94,6 @@
       </div>
     </header>
 
-    <!-- Project Summary Card -->
-    <section class="summary-bar" aria-label="Project Summary">
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-icon stat-icon-items" aria-hidden="true">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="7" height="7" x="3" y="3" rx="1.5"></rect>
-              <rect width="7" height="7" x="14" y="3" rx="1.5"></rect>
-              <rect width="7" height="7" x="14" y="14" rx="1.5"></rect>
-              <rect width="7" height="7" x="3" y="14" rx="1.5"></rect>
-            </svg>
-          </span>
-          <span class="stat-label">Items</span>
-        </div>
-        <span class="stat-value" id="statItemCount">0</span>
-        <span class="stat-sub" id="statVerifiedSub">0 verified</span>
-      </div>
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-icon stat-icon-unit" aria-hidden="true">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.3 8.7 8.7 21.3c-.4.4-1 .4-1.4 0l-4.6-4.6c-.4-.4-.4-1 0-1.4L15.3 2.7c.4-.4 1-.4 1.4 0l4.6 4.6c.4.4.4 1 0 1.4z"></path>
-              <path d="m14.5 3.5 2 2"></path>
-              <path d="m11.5 6.5 2 2"></path>
-              <path d="m8.5 9.5 2 2"></path>
-              <path d="m5.5 12.5 2 2"></path>
-            </svg>
-          </span>
-          <span class="stat-label">Main Unit</span>
-        </div>
-        <span class="stat-value" id="statMainUnit">cm</span>
-        <span class="stat-sub" id="statUnitCount">1 unit type</span>
-      </div>
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-icon stat-icon-sum" aria-hidden="true">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 7V4H6l6 8-6 8h12v-3"></path>
-            </svg>
-          </span>
-          <span class="stat-label">Total Sum</span>
-        </div>
-        <span class="stat-value" id="statTotalSum">0</span>
-        <span class="stat-sub" id="statGroupCount">1 group</span>
-      </div>
-    </section>
-
     <!-- Unified Search & Category Filter Bar (Category Dropdown integrated on the right side) -->
     <section class="search-filter-bar">
       <div class="search-box-unified" id="searchBoxUnified">
@@ -428,10 +381,16 @@
         </div>
 
         <!-- Status Checkbox -->
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="checkVerified" style="width: 18px; height: 18px; accent-color: var(--success); cursor: pointer;">
-          <label for="checkVerified" style="font-size: 0.88rem; color: var(--text-primary); cursor: pointer;">Mark as verified / measured on-site</label>
-        </div>
+        <label class="verified-checkbox-card" id="verifiedCheckboxCard" for="checkVerified">
+          <input type="checkbox" id="checkVerified" class="custom-checkbox-input verified-check-input">
+          <div class="verified-card-content">
+            <div class="verified-card-title-row">
+              <span class="verified-card-title">Mark as Verified on-site</span>
+              <span class="verified-status-pill" id="verifiedStatusPill">Unverified</span>
+            </div>
+            <div class="verified-card-subtitle">Measurement physically inspected or confirmed with laser/caliper</div>
+          </div>
+        </label>
       </div>
 
       <div class="popup-footer">
@@ -690,31 +649,39 @@
               </div>
             </div>
 
-            <div class="pdf-options-checks">
-              <label class="pdf-checkbox-chip">
-                <input type="checkbox" id="pdfIncludeSketch" checked>
-                <span>Diagram Sketch</span>
-              </label>
-              <label class="pdf-checkbox-chip">
-                <input type="checkbox" id="pdfIncludeSign" checked>
-                <span>Signatures</span>
-              </label>
-              <label class="pdf-checkbox-chip">
-                <input type="checkbox" id="pdfIncludeArea" checked>
-                <span>Area</span>
-              </label>
-              <label class="pdf-checkbox-chip">
-                <input type="checkbox" id="pdfIncludeVolume" checked>
-                <span>Volume</span>
-              </label>
-              <label class="pdf-checkbox-chip">
-                <input type="checkbox" id="pdfIncludeCategories" checked>
-                <span>Categories</span>
-              </label>
-              <label class="pdf-checkbox-chip">
-                <input type="checkbox" id="pdfIncludeNotes" checked>
-                <span>Notes</span>
-              </label>
+            <div class="pdf-checks-group">
+              <label class="form-label" style="margin-bottom: 2px; font-size: 0.74rem;">Include In Print &amp; PDF</label>
+              <div class="pdf-options-checks">
+                <label class="pdf-checkbox-chip is-checked" title="Include diagram sketch in print/PDF">
+                  <input type="checkbox" id="pdfIncludeSketch" class="custom-checkbox-input" checked>
+                  <span>Diagram Sketch</span>
+                </label>
+                <label class="pdf-checkbox-chip is-checked" title="Include signature approval lines">
+                  <input type="checkbox" id="pdfIncludeSign" class="custom-checkbox-input" checked>
+                  <span>Signatures</span>
+                </label>
+                <label class="pdf-checkbox-chip is-checked" title="Include calculated surface areas">
+                  <input type="checkbox" id="pdfIncludeArea" class="custom-checkbox-input" checked>
+                  <span>Area</span>
+                </label>
+                <label class="pdf-checkbox-chip is-checked" title="Include calculated 3D volume">
+                  <input type="checkbox" id="pdfIncludeVolume" class="custom-checkbox-input" checked>
+                  <span>Volume</span>
+                </label>
+                <label class="pdf-checkbox-chip is-checked" title="Include item categories">
+                  <input type="checkbox" id="pdfIncludeCategories" class="custom-checkbox-input" checked>
+                  <span>Categories</span>
+                </label>
+                <label class="pdf-checkbox-chip is-checked" title="Include item specification notes">
+                  <input type="checkbox" id="pdfIncludeNotes" class="custom-checkbox-input" checked>
+                  <span>Notes</span>
+                </label>
+                <label class="pdf-checkbox-chip chip-verified" id="chipPdfOnlyVerified" title="Print and export only items marked as verified">
+                  <input type="checkbox" id="pdfOnlyVerified" class="custom-checkbox-input">
+                  <span>Only Verified</span>
+                  <span class="chip-badge" id="pdfVerifiedBadge">0</span>
+                </label>
+              </div>
             </div>
 
             <!-- Contractor / Company Header Branding (Optional Collapsible) -->
@@ -917,10 +884,13 @@
           </div>
         </div>
 
-        <div style="margin-top: 8px;">
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); cursor: pointer;">
-            <input type="checkbox" id="checkAppendTemplate" checked style="accent-color: var(--accent-primary);">
-            Keep existing measurements (append rather than replace)
+        <div class="template-checkbox-row">
+          <label class="template-checkbox-card is-checked" id="templateCheckboxCard" for="checkAppendTemplate">
+            <input type="checkbox" id="checkAppendTemplate" class="custom-checkbox-input" checked>
+            <div class="template-checkbox-content">
+              <span class="template-checkbox-title">Keep existing measurements</span>
+              <span class="template-checkbox-sub">Append template items rather than replacing current sheet</span>
+            </div>
           </label>
         </div>
       </div>

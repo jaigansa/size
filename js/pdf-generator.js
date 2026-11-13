@@ -193,6 +193,7 @@ const PDFGenerator = {
       includeVolume: true,
       includeCategories: true,
       includeNotes: true,
+      onlyVerified: false,
       companyName: '',
       companyContact: '',
       companyLogo: null
@@ -207,6 +208,12 @@ const PDFGenerator = {
     const incVolume = !!opts.includeVolume;
     const incCategories = (opts.includeCategories !== undefined) ? !!opts.includeCategories : true;
     const incNotes = (opts.includeNotes !== undefined) ? !!opts.includeNotes : true;
+    const onlyVerified = !!opts.onlyVerified;
+
+    // Filter to verified items only if requested
+    if (onlyVerified) {
+      items = items.filter(i => i.verified);
+    }
 
     const totalItems = items.length;
     const verifiedCount = items.filter(i => i.verified).length;
@@ -282,7 +289,7 @@ const PDFGenerator = {
 
     const totalCols = 4 + (incArea ? 1 : 0) + (incVolume ? 1 : 0) + (incCategories ? 1 : 0) + (incNotes ? 1 : 0);
     if (items.length === 0) {
-      rowsHtml = `<tr><td colspan="${totalCols}" style="text-align:center;padding:16px;color:#94a3b8;">No measurement records added yet</td></tr>`;
+      rowsHtml = `<tr><td colspan="${totalCols}" style="text-align:center;padding:16px;color:#94a3b8;">${onlyVerified ? 'No verified measurement records found to print' : 'No measurement records added yet'}</td></tr>`;
     }
 
     const sketchHtml = (opts.includeSketch && sketchDataUrl) ? `
@@ -338,7 +345,9 @@ const PDFGenerator = {
           </div>
           <div class="print-meta-item">
             <div class="print-meta-label">Total Records</div>
-            <div class="print-meta-val">${totalItems} Items</div>
+            <div class="print-meta-val ${(totalItems > 0 && verifiedCount === totalItems) || onlyVerified ? 'verified-all' : ''}">
+              ${totalItems} Items${onlyVerified ? ' (Verified Only)' : ''}
+            </div>
           </div>
           ${incCategories ? `
           <div class="print-meta-item">
@@ -405,6 +414,11 @@ const PDFGenerator = {
     const width = 595.28;
     const height = 841.89;
     const margin = 36; // 0.5 inch margin
+
+    const onlyVerified = !!options.onlyVerified;
+    if (onlyVerified) {
+      items = items.filter(i => i.verified);
+    }
 
     const lines = [];
     const sanitize = (text) => {
@@ -493,7 +507,8 @@ const PDFGenerator = {
     lines.push(`0.88 0.90 0.94 RG 0.5 w ${margin} ${metaY} ${width - margin * 2} ${metaBoxHeight} re s`);
     const metaTextOffset = isCompact ? 5 : 8;
     lines.push(`BT /F2 7.5 Tf ${margin + 12} ${metaY + metaTextOffset} Td (CLIENT: ${sanitize(options.client || project.client || 'General')}) Tj ET`);
-    lines.push(`BT /F2 7.5 Tf ${margin + 200} ${metaY + metaTextOffset} Td (TOTAL RECORDS: ${items.length} Items) Tj ET`);
+    const verifiedSuffix = onlyVerified ? ' [VERIFIED ONLY]' : '';
+    lines.push(`BT /F2 7.5 Tf ${margin + 200} ${metaY + metaTextOffset} Td (TOTAL RECORDS: ${items.length} Items${verifiedSuffix}) Tj ET`);
     lines.push(`BT /F2 7.5 Tf ${width - margin - 110} ${metaY + metaTextOffset} Td (DATE: ${sanitize(dateStr)}) Tj ET`);
 
     const incArea = (options.includeArea !== undefined) ? !!options.includeArea : (options.includeAreaVolume !== undefined ? !!options.includeAreaVolume : false);
@@ -706,6 +721,10 @@ const PDFGenerator = {
    * Generates standard RFC 4180 CSV with UTF-8 BOM for Excel / Google Sheets
    */
   generateCSV(project, items, options = {}) {
+    const onlyVerified = !!options.onlyVerified;
+    if (onlyVerified) {
+      items = items.filter(i => i.verified);
+    }
     const incArea = (options.includeArea !== undefined) ? !!options.includeArea : (options.includeAreaVolume !== undefined ? !!options.includeAreaVolume : false);
     const incVolume = (options.includeVolume !== undefined) ? !!options.includeVolume : (options.includeAreaVolume !== undefined ? !!options.includeAreaVolume : false);
     const incCategories = (options.includeCategories !== undefined) ? !!options.includeCategories : true;
@@ -727,7 +746,8 @@ const PDFGenerator = {
     const metaRow = [
       `# PROJECT: ${project.title || 'Measurement Sheet'}`,
       `Date: ${new Date().toLocaleDateString()}`,
-      ...Array(Math.max(0, header.length - 2)).fill('')
+      `Filter: ${onlyVerified ? 'VERIFIED ONLY' : 'ALL ITEMS'}`,
+      ...Array(Math.max(0, header.length - 3)).fill('')
     ];
     const lines = [
       metaRow.map(sanitizeCsv).join(','),
