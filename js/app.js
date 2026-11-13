@@ -130,13 +130,13 @@
     
     // Stats
     statItemCount: document.getElementById('statItemCount'),
-    statVerifiedSub: document.getElementById('statVerifiedSub'),
     statMainUnit: document.getElementById('statMainUnit'),
     statUnitCount: document.getElementById('statUnitCount'),
     statTotalSum: document.getElementById('statTotalSum'),
     statGroupCount: document.getElementById('statGroupCount'),
 
     // Search & Category Dropdown
+    searchFilterBar: document.querySelector('.search-filter-bar'),
     searchBoxUnified: document.getElementById('searchBoxUnified'),
     searchCatDropdown: document.getElementById('searchCatDropdown'),
     searchCatBtn: document.getElementById('searchCatBtn'),
@@ -170,11 +170,11 @@
     sepDimH: document.getElementById('sepDimH'),
     dimSectionTitle: document.getElementById('dimSectionTitle'),
     compositeCalcBadge: document.getElementById('compositeCalcBadge'),
-    cadExprHint: document.getElementById('cadExprHint'),
     btnEvalCadExpr: document.getElementById('btnEvalCadExpr'),
     singleValueGrid: document.getElementById('singleValueGrid'),
     inputItemLabel: document.getElementById('inputItemLabel'),
     inputItemValue: document.getElementById('inputItemValue'),
+    inputItemUnitBadge: document.getElementById('inputItemUnitBadge'),
     selectItemUnit: document.getElementById('selectItemUnit'),
     unitSelectDisplay: document.getElementById('unitSelectDisplay'),
     inputItemCategory: document.getElementById('inputItemCategory'),
@@ -234,10 +234,11 @@
     pdfIncludeVolume: document.getElementById('pdfIncludeVolume'),
     pdfIncludeCategories: document.getElementById('pdfIncludeCategories'),
     pdfIncludeNotes: document.getElementById('pdfIncludeNotes'),
-    pdfOnlyVerified: document.getElementById('pdfOnlyVerified'),
-    pdfVerifiedBadge: document.getElementById('pdfVerifiedBadge'),
-    chipPdfOnlyVerified: document.getElementById('chipPdfOnlyVerified'),
     pdfCommonUnit: document.getElementById('pdfCommonUnit'),
+    pdfAreaUnitFormat: document.getElementById('pdfAreaUnitFormat'),
+    pdfOnlyVerified: document.getElementById('pdfOnlyVerified'),
+    chipPdfOnlyVerified: document.getElementById('chipPdfOnlyVerified'),
+    pdfVerifiedBadge: document.getElementById('pdfVerifiedBadge'),
     brandingDetails: document.getElementById('brandingDetails'),
     pdfLivePreview: document.getElementById('pdfLivePreview'),
     btnShareSheet: document.getElementById('btnShareSheet'),
@@ -537,14 +538,7 @@
     // Calculate Summary Stats
     const items = currentProject.items || [];
     const totalCount = items.length;
-    const verifiedCount = items.filter(i => i.verified).length;
-    
     if (el.statItemCount) el.statItemCount.textContent = totalCount;
-    if (el.statVerifiedSub) el.statVerifiedSub.textContent = `${verifiedCount} verified`;
-    if (el.pdfVerifiedBadge) {
-      el.pdfVerifiedBadge.textContent = `${verifiedCount}`;
-      el.pdfVerifiedBadge.title = `${verifiedCount} verified of ${totalCount} items`;
-    }
 
     // Detect primary unit
     const unitMap = {};
@@ -590,7 +584,7 @@
     // Check CADParser first (handles architectural CAD expressions like 1' 5" + 1/4", 3' 6" - 2", fractions, etc.)
     if (window.CADParser) {
       let firstPart = valStr;
-      if (valStr.includes('×') || (valStr.search(/\s+[xX]\s+/) !== -1)) {
+      if (valStr.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(valStr) || (valStr.search(/\s+[xX]\s+/) !== -1)) {
         firstPart = valStr.split(/\s*[×xX]\s*/)[0].trim();
       }
       const cadNum = window.CADParser.evaluateToNumber(firstPart, defaultUnit);
@@ -638,11 +632,13 @@
     cm: 0.01,
     m: 1,
     in: 0.0254,
+    '"': 0.0254,
     ft: 0.3048,
+    "'": 0.3048,
     yd: 0.9144
   };
 
-  const UNIT_DECIMALS = { mm: 1, cm: 2, m: 4, in: 3, ft: 4, yd: 4 };
+  const UNIT_DECIMALS = { mm: 1, cm: 2, m: 4, in: 3, '"': 3, ft: 4, "'": 4, yd: 4 };
 
   const UNIT_LABELS = {
     mm: 'millimeters',
@@ -653,20 +649,86 @@
     yd: 'yards'
   };
 
+  const UNIT_SYMBOLS = {
+    mm: 'mm',
+    cm: 'cm',
+    m: 'm',
+    in: 'in',
+    ft: 'ft',
+    yd: 'yd'
+  };
+
   const UNIT_SHORT_LABELS = {
     mm: 'mm',
     cm: 'cm',
     m: 'm',
-    in: 'in (")',
-    ft: "ft (')",
+    in: 'in',
+    ft: 'ft',
     yd: 'yd'
   };
 
-  // Keep the compact pill label in sync with the (transparent) native select.
+  // Keep the compact pill label and inputItemValue unit badge in sync with the native select.
   function syncUnitDisplay() {
-    if (!el.unitSelectDisplay || !el.selectItemUnit) return;
+    if (!el.selectItemUnit) return;
     const unit = el.selectItemUnit.value;
-    el.unitSelectDisplay.textContent = UNIT_SHORT_LABELS[unit] || unit;
+    const symbol = UNIT_SYMBOLS[unit] || unit;
+    if (el.unitSelectDisplay) el.unitSelectDisplay.textContent = symbol;
+    if (el.inputItemUnitBadge) el.inputItemUnitBadge.textContent = symbol;
+
+    const dimUnitPill = document.getElementById('dimUnitPill');
+    if (dimUnitPill) {
+      dimUnitPill.querySelectorAll('.dim-unit-chip').forEach(chip => {
+        const isActive = chip.dataset.unit === unit;
+        chip.classList.toggle('active', isActive);
+        chip.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      });
+    }
+  }
+
+  // Detects if a dimension string contains a unit and returns the canonical unit: 'cm', 'mm', 'm', 'in', 'ft', 'yd'
+  function detectUnitFromInputString(str) {
+    if (!str || typeof str !== 'string') return null;
+    const s = str.trim();
+    if (!s) return null;
+
+    // 1. Millimeters (check before meters)
+    if (/(?:^|\d|\s)\s*mm\b/i.test(s) || /millimeter/i.test(s)) return 'mm';
+
+    // 2. Centimeters
+    if (/(?:^|\d|\s)\s*cm\b/i.test(s) || /centimeter/i.test(s)) return 'cm';
+
+    // 3. Meters (not mm, not cm)
+    if (/\d\s*m\b/i.test(s) && !/[cm]m\b/i.test(s)) return 'm';
+
+    // 4. Inches: '"' or in / inch / inches
+    if (s.includes('"') || /(?:\d|\s|^)\s*(?:in|inch|inches)\b/i.test(s)) return 'in';
+
+    // 5. Feet: "'" or ft / feet / foot
+    if (s.includes("'") || /(?:\d|\s|^)\s*(?:ft|feet|foot)\b/i.test(s)) return 'ft';
+
+    // 6. Yards: yd / yard / yards
+    if (/(?:\d|\s|^)\s*(?:yd|yard|yards)\b/i.test(s)) return 'yd';
+
+    return null;
+  }
+
+  // Cleans redundant typed units matching the current unit so inputs display cleanly without duplication
+  function stripRedundantUnit(str, unit) {
+    if (!str || typeof str !== 'string') return str;
+    const s = str.trim();
+    if (!s) return s;
+
+    // Do not alter composite expressions (e.g. 1' 5", math expressions like 10 + 5)
+    if (/[+*]/.test(s)) return s;
+    if (s.includes("'") && s.includes('"')) return s;
+
+    if (unit === 'cm') return s.replace(/^(\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?)\s*cm$/i, '$1');
+    if (unit === 'mm') return s.replace(/^(\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?)\s*mm$/i, '$1');
+    if (unit === 'm') return s.replace(/^(\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?)\s*m$/i, '$1');
+    if (unit === 'in' || unit === '"') return s.replace(/^(\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?)\s*(?:"|in|inch|inches)$/i, '$1');
+    if (unit === 'ft' || unit === "'") return s.replace(/^(\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?)\s*(?:'|ft|feet|foot)$/i, '$1');
+    if (unit === 'yd') return s.replace(/^(\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?)\s*(?:yd|yard|yards)$/i, '$1');
+    return s;
   }
 
   function convertBetweenUnits(value, fromUnit, toUnit) {
@@ -708,7 +770,7 @@
     const str = String(raw || '').trim();
     if (!str) return str;
 
-    if (str.includes('×') || str.search(/\s+[xX]\s+/) !== -1) {
+    if (str.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(str) || str.search(/\s+[xX]\s+/) !== -1) {
       return str.split(/\s*[×xX]\s*/).map(part => {
         const num = parseValueInUnit(part.trim(), fromUnit);
         if (isNaN(num)) return part.trim();
@@ -819,12 +881,14 @@
   function openCategoryDropdown() {
     el.searchCatDropdown.classList.add('open');
     el.searchBoxUnified.classList.add('dropdown-open');
+    if (el.searchFilterBar) el.searchFilterBar.classList.add('dropdown-open');
     el.searchCatBtn.setAttribute('aria-expanded', 'true');
   }
 
   function closeCategoryDropdown() {
     el.searchCatDropdown.classList.remove('open');
     el.searchBoxUnified.classList.remove('dropdown-open');
+    if (el.searchFilterBar) el.searchFilterBar.classList.remove('dropdown-open');
     el.searchCatBtn.setAttribute('aria-expanded', 'false');
   }
 
@@ -832,14 +896,12 @@
   // MEASUREMENT LIST & REORDERING
   // ==========================================================================
 
-  function renderMeasurementList() {
-    if (!currentProject) return;
+  function getFilteredItems() {
+    if (!currentProject) return [];
     const items = currentProject.items || [];
-
-    // Filter by category and search query
-    const filtered = items.filter(item => {
+    return items.filter(item => {
       const matchesCategory = (currentFilterCategory === 'ALL') ||
-        ((item.category || 'General') === currentFilterCategory);
+        ((item.category || 'General').toLowerCase() === currentFilterCategory.toLowerCase());
 
       if (!matchesCategory) return false;
 
@@ -851,10 +913,151 @@
       const noteMatch = (item.notes || '').toLowerCase().includes(q);
       return labelMatch || catMatch || valMatch || noteMatch;
     });
+  }
 
-    if (filtered.length === 0) {
+  function cleanPartValueAndUnit(val, defaultUnit) {
+    let str = String(val || '').trim();
+    if (!str || str === '--') return { value: '--', unit: defaultUnit || '' };
+
+    // If it's architectural notation like 1' 5" or 1'-5 1/4", the unit is self-contained
+    if (str.includes("'") && (str.includes('"') || /\d+\/\d+/.test(str))) {
+      return { value: str, unit: '' };
+    }
+
+    // Check for unit attached to the value (e.g. "10cm", "10 cm", "10in", "10\"")
+    const unitMatch = str.match(/^(.*?)\s*(mm|cm|m|in|ft|yd|"|'|”|′)$/i);
+    if (unitMatch && unitMatch[1]) {
+      const numPart = unitMatch[1].trim();
+      let detectedUnit = unitMatch[2].toLowerCase();
+      if (detectedUnit === '"' || detectedUnit === '”') detectedUnit = 'in';
+      if (detectedUnit === "'" || detectedUnit === '′') detectedUnit = 'ft';
+      return { value: numPart, unit: detectedUnit || defaultUnit || '' };
+    }
+
+    return { value: str, unit: defaultUnit || '' };
+  }
+
+  function parseCardMeasurementParts(rawVal, defaultUnit, itemLabel) {
+    if (!rawVal || rawVal.trim() === '') {
+      return [{ prefix: 'L:', value: '--', unit: defaultUnit || '' }];
+    }
+    const str = rawVal.trim();
+    if (/(^|\s)[LWHlwh]:/.test(str)) {
+      const parts = str.split(/(?=\b[LWHlwh]:)/i).map(s => s.trim()).filter(Boolean);
+      if (parts.length > 1 || /^[LWHlwh]:/i.test(parts[0])) {
+        return parts.map(p => {
+          const m = p.match(/^([LWHlwh]):\s*(.*?)(mm|cm|m|in|ft|yd|"|'|”|′)?$/i);
+          if (m) {
+            const val = m[2].trim() || '--';
+            const unit = m[3] ? m[3].trim() : (defaultUnit || '');
+            const cleaned = cleanPartValueAndUnit(val, unit);
+            return { prefix: m[1].toUpperCase() + ':', value: cleaned.value, unit: cleaned.unit };
+          }
+          const cleaned = cleanPartValueAndUnit(p, defaultUnit);
+          return { prefix: 'L:', value: cleaned.value, unit: cleaned.unit };
+        });
+      }
+    }
+
+    let splitParts = str.split(/\s*[×xX]\s*/);
+    if (splitParts.length === 0 || (splitParts.length === 1 && !splitParts[0])) {
+      splitParts = ['--'];
+    }
+
+    const defaultPrefixes = ['L:', 'W:', 'H:', 'D:'];
+    if (splitParts.length === 1) {
+      const lower = (itemLabel || '').toLowerCase();
+      let pfx = 'L:';
+      if (lower.includes('height') || lower.includes('thick') || lower.includes('depth') || lower.includes('rise')) {
+        pfx = 'H:';
+      } else if (lower.includes('width') || lower.includes('span') || lower.includes('opening') || lower.includes('clearance')) {
+        pfx = 'W:';
+      }
+      let pVal = splitParts[0].replace(/^[LWHlwh]\s*:\s*/, '').trim() || '--';
+      const cleaned = cleanPartValueAndUnit(pVal, defaultUnit);
+      return [{ prefix: pfx, value: cleaned.value, unit: cleaned.unit }];
+    }
+
+    return splitParts.map((p, idx) => {
+      let pfx = defaultPrefixes[idx] || `D${idx + 1}:`;
+      const pMatch = p.match(/^([LWHlwh]):\s*(.*)$/);
+      if (pMatch) {
+        pfx = pMatch[1].toUpperCase() + ':';
+        p = pMatch[2];
+      }
+      let pVal = p.trim() || '--';
+      const cleaned = cleanPartValueAndUnit(pVal, defaultUnit);
+      return { prefix: pfx, value: cleaned.value, unit: cleaned.unit };
+    });
+  }
+
+  function adjustMeasurementsColLayout() {
+    if (!el.measurementList) return;
+    const cols = el.measurementList.querySelectorAll('.card-measurements-col');
+    cols.forEach(col => {
+      const lines = col.querySelectorAll('.card-dim-line');
+      if (lines.length <= 1) {
+        col.classList.remove('is-multiline');
+        return;
+      }
+      col.classList.remove('is-multiline');
+      const firstTop = lines[0].offsetTop;
+      let hasWrapped = false;
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].offsetTop > firstTop + 2) {
+          hasWrapped = true;
+          break;
+        }
+      }
+      if (hasWrapped) {
+        col.classList.add('is-multiline');
+      }
+    });
+  }
+
+  function renderMeasurementList() {
+    if (!currentProject) return;
+    const items = currentProject.items || [];
+    const filtered = getFilteredItems();
+
+    // If project has no measurements at all, show starter onboarding empty state
+    if (items.length === 0) {
       el.measurementList.innerHTML = '';
       el.emptyState.style.display = 'flex';
+      return;
+    }
+
+    // If project has items, but current search / filter returned zero matches
+    if (filtered.length === 0) {
+      el.emptyState.style.display = 'none';
+      const filterDesc = searchQuery
+        ? `search query "${escapeHtml(searchQuery)}"`
+        : `category "${escapeHtml(currentFilterCategory)}"`;
+      el.measurementList.innerHTML = `
+        <div class="empty-filter-state">
+          <div class="empty-filter-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <div class="empty-filter-title">No matching measurements</div>
+          <div class="empty-filter-desc">No measurements match ${filterDesc}</div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnResetFilter" style="margin-top: 8px; cursor: pointer;">
+            Clear Search &amp; Filter
+          </button>
+        </div>
+      `;
+      const btnReset = el.measurementList.querySelector('#btnResetFilter');
+      if (btnReset) {
+        btnReset.onclick = () => {
+          searchQuery = '';
+          el.searchInput.value = '';
+          el.btnClearSearch.style.display = 'none';
+          currentFilterCategory = 'ALL';
+          renderAll();
+        };
+      }
       return;
     }
 
@@ -867,64 +1070,78 @@
       card.dataset.id = item.id;
 
       const num = String(index + 1).padStart(2, '0');
-      const catClass = getCategoryColorClass(item.category);
-      const categoryTag = item.category ? `<span class="card-cat-badge ${catClass}">${escapeHtml(item.category)}</span>` : '';
-      const notesLine = item.notes ? `<div class="card-notes">${escapeHtml(item.notes)}</div>` : '';
+      const isUpDisabled = index === 0;
+      const isDownDisabled = index === filtered.length - 1;
+
+      // Extract composite dimension parts (L × W × H, L:10.5cm W:12in, etc.)
+      const rawVal = (item.value !== '' && item.value != null) ? String(item.value).trim() : '';
+      const parts = parseCardMeasurementParts(rawVal, item.unit, item.label);
+
+      let dimsHtml = '';
+      parts.forEach((p) => {
+        dimsHtml += `
+          <div class="card-dim-line">
+            <span class="card-dim-prefix">${escapeHtml(p.prefix)}</span>
+            <span class="card-dim-val">${escapeHtml(p.value)}</span>
+            ${p.unit ? `<span class="card-dim-unit">${escapeHtml(p.unit)}</span>` : ''}
+          </div>
+        `;
+      });
+
+      const labelText = item.label
+        ? escapeHtml(item.label)
+        : (item.category && item.category !== 'General' ? escapeHtml(item.category) : 'Dimension');
 
       card.innerHTML = `
-        <div class="card-left">
-          <div class="item-index">${num}</div>
-          <div class="card-details">
-            <div class="card-label-row">
-              <span class="card-label">${escapeHtml(item.label)}</span>
-              ${categoryTag}
-            </div>
-            ${notesLine}
+        <div class="card-main-col">
+          <div class="card-title">${labelText}</div>
+          <div class="card-measurements-col">
+            ${dimsHtml}
           </div>
         </div>
-
-        <div class="card-right">
-          <div class="card-reorder-group" data-stop-propagation>
-            <button type="button" class="reorder-btn" data-action="move-up" title="Move Up" ${index === 0 ? 'disabled' : ''}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
-            </button>
-            <button type="button" class="reorder-btn" data-action="move-down" title="Move Down" ${index === filtered.length - 1 ? 'disabled' : ''}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </button>
-          </div>
-
-          <div class="card-value-box">
-            <span class="card-value">${escapeHtml(item.value || '0')}</span>
-            <span class="card-unit">${escapeHtml(item.unit || '')}</span>
-          </div>
-
-          <button class="check-toggle-btn ${item.verified ? 'checked' : ''}" title="${item.verified ? 'Verified' : 'Mark verified'}" data-action="toggle-check">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+        <button type="button" class="check-toggle-btn ${item.verified ? 'checked' : ''}" title="${item.verified ? 'Verified on-site (tap to unverify)' : 'Mark as verified on-site'}" data-action="toggle-check" aria-label="Toggle verified status">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </button>
+        <div class="card-right-col" data-stop-propagation>
+          <button type="button" class="stepper-arrow-btn stepper-btn-up ${isUpDisabled ? 'disabled' : ''}" data-action="move-up" title="Move Up" aria-label="Move Up" ${isUpDisabled ? 'disabled' : ''}>
+            <svg width="12" height="7" viewBox="0 0 12 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5.5L6 1.5L10.5 5.5"/></svg>
+          </button>
+          <span class="card-index-num">${num}</span>
+          <button type="button" class="stepper-arrow-btn stepper-btn-down ${isDownDisabled ? 'disabled' : ''}" data-action="move-down" title="Move Down" aria-label="Move Down" ${isDownDisabled ? 'disabled' : ''}>
+            <svg width="12" height="7" viewBox="0 0 12 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5L6 5.5L10.5 1.5"/></svg>
           </button>
         </div>
       `;
 
       card.addEventListener('click', (e) => {
-        // Toggle check
         if (e.target.closest('[data-action="toggle-check"]')) {
           e.stopPropagation();
           toggleItemVerified(item.id);
           return;
         }
 
-        // Move Up
+        // Stepper reorder buttons: move item up or down
         if (e.target.closest('[data-action="move-up"]')) {
           e.stopPropagation();
-          moveItem(item.id, -1);
+          const btn = e.target.closest('[data-action="move-up"]');
+          if (btn && !btn.disabled && !btn.classList.contains('disabled')) {
+            moveItem(item.id, -1);
+          }
+          return;
+        }
+        if (e.target.closest('[data-action="move-down"]')) {
+          e.stopPropagation();
+          const btn = e.target.closest('[data-action="move-down"]');
+          if (btn && !btn.disabled && !btn.classList.contains('disabled')) {
+            moveItem(item.id, 1);
+          }
           return;
         }
 
-        // Move Down
-        if (e.target.closest('[data-action="move-down"]')) {
+        if (e.target.closest('[data-stop-propagation]')) {
           e.stopPropagation();
-          moveItem(item.id, 1);
           return;
         }
 
@@ -933,25 +1150,50 @@
 
       el.measurementList.appendChild(card);
     });
+
+    adjustMeasurementsColLayout();
+    requestAnimationFrame(adjustMeasurementsColLayout);
   }
 
   function moveItem(itemId, delta) {
     if (!currentProject || !currentProject.items) return;
     const items = currentProject.items;
-    const idx = items.findIndex(i => i.id === itemId);
-    if (idx === -1) return;
+    const visible = getFilteredItems();
+    const vIdx = visible.findIndex(i => i.id === itemId);
+    if (vIdx === -1) return;
 
-    const targetIdx = idx + delta;
-    if (targetIdx < 0 || targetIdx >= items.length) return;
+    const targetVIdx = vIdx + delta;
+    if (targetVIdx < 0 || targetVIdx >= visible.length) return;
 
-    // Swap items
-    const temp = items[idx];
-    items[idx] = items[targetIdx];
-    items[targetIdx] = temp;
+    const targetItem = visible[targetVIdx];
+    const actualIdx = items.findIndex(i => i.id === itemId);
+    const targetActualIdx = items.findIndex(i => i.id === targetItem.id);
+    if (actualIdx === -1 || targetActualIdx === -1) return;
+
+    // Swap items in currentProject.items
+    const temp = items[actualIdx];
+    items[actualIdx] = items[targetActualIdx];
+    items[targetActualIdx] = temp;
+
+    // Mobile tactile feedback if supported
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(12); } catch (_) {}
+    }
 
     currentProject.updatedAt = new Date().toISOString();
     saveData();
     renderMeasurementList();
+  }
+
+  function toggleItemVerified(itemId) {
+    if (!currentProject || !currentProject.items) return;
+    const item = currentProject.items.find(i => i.id === itemId);
+    if (item) {
+      item.verified = !item.verified;
+      currentProject.updatedAt = new Date().toISOString();
+      saveData();
+      renderAll();
+    }
   }
 
   function escapeHtml(str) {
@@ -985,52 +1227,7 @@
 
   function setDimMode(mode) {
     activeDimMode = mode;
-    document.querySelectorAll('.dim-mode-tab').forEach(tab => {
-      const isActive = tab.dataset.dimMode === mode;
-      tab.classList.toggle('active', isActive);
-      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    if (mode === '1d') {
-      if (el.singleValueGrid) el.singleValueGrid.style.display = 'block';
-      if (el.compositeInputsBox) el.compositeInputsBox.style.display = 'none';
-      if (el.dimSectionTitle) {
-        const titleSpan = el.dimSectionTitle.querySelector('span');
-        if (titleSpan) titleSpan.textContent = 'Single Value';
-      }
-      if (!el.inputItemValue.value && el.inputDimL && el.inputDimL.value) {
-        el.inputItemValue.value = el.inputDimL.value;
-      }
-    } else if (mode === '2d') {
-      if (el.singleValueGrid) el.singleValueGrid.style.display = 'none';
-      if (el.compositeInputsBox) el.compositeInputsBox.style.display = 'block';
-      if (el.colDimH) el.colDimH.style.display = 'none';
-      if (el.sepDimH) el.sepDimH.style.display = 'none';
-      if (el.sepDimW) el.sepDimW.style.display = 'flex';
-      if (el.dimSectionTitle) {
-        const titleSpan = el.dimSectionTitle.querySelector('span');
-        if (titleSpan) titleSpan.textContent = '2D Dimensions';
-      }
-      if (!el.inputDimL.value && el.inputItemValue && el.inputItemValue.value) {
-        el.inputDimL.value = el.inputItemValue.value;
-      }
-      updateCompositeCalc();
-    } else if (mode === '3d') {
-      if (el.singleValueGrid) el.singleValueGrid.style.display = 'none';
-      if (el.compositeInputsBox) el.compositeInputsBox.style.display = 'block';
-      if (el.colDimH) el.colDimH.style.display = 'flex';
-      if (el.sepDimH) el.sepDimH.style.display = 'flex';
-      if (el.sepDimW) el.sepDimW.style.display = 'flex';
-      if (el.dimSectionTitle) {
-        const titleSpan = el.dimSectionTitle.querySelector('span');
-        if (titleSpan) titleSpan.textContent = '3D Dimensions';
-      }
-      if (!el.inputDimL.value && el.inputItemValue && el.inputItemValue.value) {
-        el.inputDimL.value = el.inputItemValue.value;
-      }
-      updateCompositeCalc();
-    }
-    updateCadHint(mode === '1d' ? el.inputItemValue : (lastActiveDimInput || el.inputDimL));
+    updateCompositeCalc();
   }
 
   function updateCompositeCalc() {
@@ -1041,71 +1238,26 @@
 
     if (!el.compositeCalcBadge) return;
 
-    if (activeDimMode === '2d') {
-      if (l > 0 && w > 0) {
-        const area = (l * w).toFixed(2).replace(/\.00$/, '');
-        el.compositeCalcBadge.textContent = `📐 Area: ${area} ${unit}²`;
-        el.compositeCalcBadge.style.display = 'block';
-      } else {
-        el.compositeCalcBadge.style.display = 'none';
-      }
-    } else if (activeDimMode === '3d') {
-      if (l > 0 && w > 0 && h > 0) {
-        const vol = (l * w * h).toFixed(2).replace(/\.00$/, '');
-        const area = (l * w).toFixed(2).replace(/\.00$/, '');
-        el.compositeCalcBadge.textContent = `📦 Vol: ${vol} ${unit}³ • Area: ${area} ${unit}²`;
-        el.compositeCalcBadge.style.display = 'block';
-      } else if (l > 0 && w > 0) {
-        const area = (l * w).toFixed(2).replace(/\.00$/, '');
-        el.compositeCalcBadge.textContent = `📐 Base Area: ${area} ${unit}²`;
-        el.compositeCalcBadge.style.display = 'block';
-      } else {
-        el.compositeCalcBadge.style.display = 'none';
-      }
+    if (l > 0 && w > 0 && h > 0) {
+      activeDimMode = '3d';
+      const vol = (l * w * h).toFixed(2).replace(/\.00$/, '');
+      const area = (l * w).toFixed(2).replace(/\.00$/, '');
+      el.compositeCalcBadge.textContent = `📦 Vol: ${vol} ${unit}³ • Area: ${area} ${unit}²`;
+      el.compositeCalcBadge.style.display = 'block';
+    } else if ((l > 0 && w > 0) || (l > 0 && h > 0) || (w > 0 && h > 0)) {
+      activeDimMode = '2d';
+      const d1 = l > 0 ? l : w;
+      const d2 = (l > 0 && w > 0) ? w : h;
+      const area = (d1 * d2).toFixed(2).replace(/\.00$/, '');
+      el.compositeCalcBadge.textContent = `📐 Area: ${area} ${unit}²`;
+      el.compositeCalcBadge.style.display = 'block';
     } else {
+      activeDimMode = '1d';
       el.compositeCalcBadge.style.display = 'none';
     }
   }
 
-  function updateCadHint(inputEl) {
-    if (!el.cadExprHint) return;
-    const target = inputEl || (activeDimMode === '1d' ? el.inputItemValue : (lastActiveDimInput || el.inputDimL));
-    if (!target) {
-      el.cadExprHint.style.display = 'none';
-      return;
-    }
-    const val = (target.value || '').trim();
-    const unit = (el.selectItemUnit && el.selectItemUnit.value) ? el.selectItemUnit.value : 'in';
-    if (window.CADParser && window.CADParser.isCadExpression(val)) {
-      const hint = window.CADParser.formatLiveHint(val, unit);
-      if (hint) {
-        el.cadExprHint.innerHTML = `
-          <span class="cad-calc-hint-val" title="CAD evaluation">${escapeHtml(hint)}</span>
-          <button type="button" class="cad-calc-hint-btn" id="btnApplyCadHint" title="Replace expression with evaluated value">Apply</button>
-        `;
-        el.cadExprHint.style.display = 'flex';
-        const applyBtn = el.cadExprHint.querySelector('#btnApplyCadHint');
-        if (applyBtn) {
-          applyBtn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const resolved = window.CADParser.resolveExpressionString(val, unit);
-            target.value = resolved;
-            target.focus();
-            updateCadHint(target);
-            if (activeDimMode !== '1d') updateCompositeCalc();
-          };
-        }
-        return;
-      }
-    }
-    el.cadExprHint.style.display = 'none';
-  }
-
   function renderCategorySuggestions() {
-    if (!el.categorySuggestions) return;
-    const currentVal = (el.inputItemCategory ? el.inputItemCategory.value.trim() : '').toLowerCase();
-
     // Combine standard default categories with any existing categories in the current sheet
     const catSet = new Set(DEFAULT_CATEGORIES);
     if (currentProject && currentProject.items) {
@@ -1122,21 +1274,23 @@
       el.categoryList.innerHTML = allCats.map(cat => `<option value="${escapeHtml(cat)}">`).join('');
     }
 
-    // Render quick suggestion chips
-    el.categorySuggestions.innerHTML = allCats.map(cat => {
-      const isMatched = currentVal === cat.toLowerCase();
-      return `<button type="button" class="sugg-chip ${isMatched ? 'active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
-    }).join('');
+    // Render quick suggestion chips if container exists
+    if (el.categorySuggestions) {
+      const currentVal = (el.inputItemCategory ? el.inputItemCategory.value.trim() : '').toLowerCase();
+      el.categorySuggestions.innerHTML = allCats.map(cat => {
+        const isMatched = currentVal === cat.toLowerCase();
+        return `<button type="button" class="sugg-chip ${isMatched ? 'active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+      }).join('');
 
-    // Wire click on each suggestion chip
-    el.categorySuggestions.querySelectorAll('.sugg-chip').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const chosen = btn.dataset.cat;
-        el.inputItemCategory.value = chosen;
-        renderCategorySuggestions();
+      el.categorySuggestions.querySelectorAll('.sugg-chip').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const chosen = btn.dataset.cat;
+          el.inputItemCategory.value = chosen;
+          renderCategorySuggestions();
+        });
       });
-    });
+    }
   }
 
   function updateVerifiedCheckboxUI() {
@@ -1169,15 +1323,16 @@
 
     // Reset inputs
     el.inputItemLabel.value = '';
-    el.inputItemValue.value = '';
-    el.inputDimL.value = '';
-    el.inputDimW.value = '';
-    el.inputDimH.value = '';
+    if (el.inputItemValue) el.inputItemValue.value = '';
+    if (el.inputDimL) el.inputDimL.value = '';
+    if (el.inputDimW) el.inputDimW.value = '';
+    if (el.inputDimH) el.inputDimH.value = '';
     el.inputItemNotes.value = '';
-    el.checkVerified.checked = false;
+    if (el.checkVerified) el.checkVerified.checked = false;
     updateVerifiedCheckboxUI();
-    setDimMode('1d');
-    if (el.cadExprHint) el.cadExprHint.style.display = 'none';
+    activeDimMode = '1d';
+    lastActiveDimInput = el.inputDimL;
+    if (el.compositeCalcBadge) el.compositeCalcBadge.style.display = 'none';
 
     // Retain last used unit and category for quick consecutive note taking
     const lastItem = currentProject.items && currentProject.items[currentProject.items.length - 1];
@@ -1213,7 +1368,7 @@
     syncUnitDisplay();
     el.inputItemCategory.value = item.category || '';
     el.inputItemNotes.value = item.notes || '';
-    el.checkVerified.checked = !!item.verified;
+    if (el.checkVerified) el.checkVerified.checked = !!item.verified;
     updateVerifiedCheckboxUI();
 
     // Detect if value is composite 2D or 3D
@@ -1221,30 +1376,33 @@
     if (val.includes('×') || (val.search(/\s+[xX]\s+/) !== -1)) {
       const parts = val.split(/\s*[×xX]\s*/).map(s => s.trim());
       if (parts.length >= 3) {
-        setDimMode('3d');
-        el.inputDimL.value = parts[0] || '';
-        el.inputDimW.value = parts[1] || '';
-        el.inputDimH.value = parts[2] || '';
+        activeDimMode = '3d';
+        if (el.inputDimL) el.inputDimL.value = parts[0] || '';
+        if (el.inputDimW) el.inputDimW.value = parts[1] || '';
+        if (el.inputDimH) el.inputDimH.value = parts[2] || '';
       } else {
-        setDimMode('2d');
-        el.inputDimL.value = parts[0] || '';
-        el.inputDimW.value = parts[1] || '';
-        el.inputDimH.value = '';
+        activeDimMode = '2d';
+        if (el.inputDimL) el.inputDimL.value = parts[0] || '';
+        if (el.inputDimW) el.inputDimW.value = parts[1] || '';
+        if (el.inputDimH) el.inputDimH.value = '';
       }
-      updateCompositeCalc();
     } else {
-      setDimMode('1d');
-      el.inputItemValue.value = val;
+      activeDimMode = '1d';
+      if (el.inputDimL) el.inputDimL.value = val;
+      if (el.inputDimW) el.inputDimW.value = '';
+      if (el.inputDimH) el.inputDimH.value = '';
     }
+    if (el.inputItemValue) el.inputItemValue.value = val;
 
-    updateCadHint(activeDimMode === '1d' ? el.inputItemValue : el.inputDimL);
+    lastActiveDimInput = el.inputDimL;
+    updateCompositeCalc();
     renderCategorySuggestions();
     openPopup(el.popupMeasurement);
   }
 
   function saveCurrentMeasurement(andNext = false) {
     const label = el.inputItemLabel.value.trim();
-    const unit = el.selectItemUnit.value;
+    let unit = el.selectItemUnit.value;
     let value = '';
 
     const resolveCad = (str) => {
@@ -1255,42 +1413,49 @@
       return str;
     };
 
-    if (activeDimMode === '1d') {
-      const raw = el.inputItemValue.value.trim();
-      value = resolveCad(raw);
-      el.inputItemValue.value = value;
-    } else if (activeDimMode === '2d') {
-      let l = el.inputDimL.value.trim();
-      let w = el.inputDimW.value.trim();
-      if (!l || !w) {
-        showToast('⚠️ Please enter Length and Width');
-        return;
-      }
-      l = resolveCad(l);
-      w = resolveCad(w);
-      el.inputDimL.value = l;
-      el.inputDimW.value = w;
-      value = `${l} × ${w}`;
-    } else if (activeDimMode === '3d') {
-      let l = el.inputDimL.value.trim();
-      let w = el.inputDimW.value.trim();
-      let h = el.inputDimH.value.trim();
-      if (!l || !w || !h) {
-        showToast('⚠️ Please enter Length, Width, and Height');
-        return;
-      }
-      l = resolveCad(l);
-      w = resolveCad(w);
-      h = resolveCad(h);
-      el.inputDimL.value = l;
-      el.inputDimW.value = w;
-      el.inputDimH.value = h;
-      value = `${l} × ${w} × ${h}`;
+    let l = el.inputDimL ? el.inputDimL.value.trim() : '';
+    let w = el.inputDimW ? el.inputDimW.value.trim() : '';
+    let h = el.inputDimH ? el.inputDimH.value.trim() : '';
+
+    if (!l && !w && !h) {
+      showToast('⚠️ Please enter a dimension value');
+      return;
     }
+
+    // Auto-detect unit from any typed dimension
+    const detected = detectUnitFromInputString(l) || detectUnitFromInputString(w) || detectUnitFromInputString(h);
+    if (detected && el.selectItemUnit && el.selectItemUnit.value !== detected) {
+      el.selectItemUnit.value = detected;
+      lastSelectedUnit = detected;
+      syncUnitDisplay();
+      unit = detected;
+    }
+
+    l = resolveCad(stripRedundantUnit(l, unit));
+    w = resolveCad(stripRedundantUnit(w, unit));
+    h = resolveCad(stripRedundantUnit(h, unit));
+
+    if (el.inputDimL) el.inputDimL.value = l;
+    if (el.inputDimW) el.inputDimW.value = w;
+    if (el.inputDimH) el.inputDimH.value = h;
+
+    const dims = [l, w, h].filter(Boolean);
+    if (l && w && h) {
+      value = `${l} × ${w} × ${h}`;
+      activeDimMode = '3d';
+    } else if (dims.length === 2) {
+      value = `${dims[0]} × ${dims[1]}`;
+      activeDimMode = '2d';
+    } else {
+      value = dims[0] || '';
+      activeDimMode = '1d';
+    }
+
+    if (el.inputItemValue) el.inputItemValue.value = value;
 
     const category = el.inputItemCategory.value.trim() || 'General';
     let notes = el.inputItemNotes.value.trim();
-    const verified = el.checkVerified.checked;
+    const verified = el.checkVerified ? el.checkVerified.checked : false;
 
     if (!label) {
       showToast('⚠️ Please enter a dimension or item label');
@@ -1348,10 +1513,9 @@
         el.inputDimW.value = '';
         el.inputDimH.value = '';
         el.inputItemNotes.value = '';
-        el.checkVerified.checked = false;
+        if (el.checkVerified) el.checkVerified.checked = false;
         updateVerifiedCheckboxUI();
         if (el.compositeCalcBadge) el.compositeCalcBadge.style.display = 'none';
-        if (el.cadExprHint) el.cadExprHint.style.display = 'none';
         el.inputItemLabel.focus();
       } else {
         closePopup(el.popupMeasurement);
@@ -1392,17 +1556,6 @@
     renderAll();
     showToast('✓ Measurement restored');
     lastDeletedItem = null;
-  }
-
-  function toggleItemVerified(itemId) {
-    if (!currentProject || !currentProject.items) return;
-    const item = currentProject.items.find(i => i.id === itemId);
-    if (item) {
-      item.verified = !item.verified;
-      currentProject.updatedAt = new Date().toISOString();
-      saveData();
-      renderAll();
-    }
   }
 
   // ==========================================================================
@@ -1781,16 +1934,16 @@
   }
 
   function getPdfExportOptions() {
-    const incArea = el.pdfIncludeArea ? el.pdfIncludeArea.checked : true;
-    const incVolume = el.pdfIncludeVolume ? el.pdfIncludeVolume.checked : true;
-    const incCategories = el.pdfIncludeCategories ? el.pdfIncludeCategories.checked : true;
-    const incNotes = el.pdfIncludeNotes ? el.pdfIncludeNotes.checked : true;
+    const incArea = el.pdfIncludeArea ? el.pdfIncludeArea.checked : false;
+    const incVolume = el.pdfIncludeVolume ? el.pdfIncludeVolume.checked : false;
+    const incCategories = el.pdfIncludeCategories ? el.pdfIncludeCategories.checked : false;
+    const incNotes = el.pdfIncludeNotes ? el.pdfIncludeNotes.checked : false;
     const onlyVerified = el.pdfOnlyVerified ? el.pdfOnlyVerified.checked : false;
     return {
       title: el.pdfTitleInput.value || 'MEASUREMENT SHEET',
       client: el.pdfClientInput.value || 'General',
-      includeSketch: el.pdfIncludeSketch ? el.pdfIncludeSketch.checked : true,
-      includeSignature: el.pdfIncludeSign ? el.pdfIncludeSign.checked : true,
+      includeSketch: el.pdfIncludeSketch ? el.pdfIncludeSketch.checked : false,
+      includeSignature: el.pdfIncludeSign ? el.pdfIncludeSign.checked : false,
       compact: true,
       includeArea: incArea,
       includeVolume: incVolume,
@@ -1799,6 +1952,7 @@
       includeNotes: incNotes,
       onlyVerified: onlyVerified,
       commonUnit: el.pdfCommonUnit ? el.pdfCommonUnit.value : '',
+      areaUnitFormat: el.pdfAreaUnitFormat ? el.pdfAreaUnitFormat.value : '',
       companyName: companyBranding.name || '',
       companyContact: companyBranding.contact || '',
       companyLogo: companyBranding.logo || null
@@ -1809,10 +1963,7 @@
     if (!currentProject) return;
     saveBranding();
     const options = getPdfExportOptions();
-    let items = currentProject.items || [];
-    if (options.onlyVerified) {
-      items = items.filter(i => i.verified);
-    }
+    const items = currentProject.items || [];
     const sheetHtml = window.PDFGenerator.renderPrintDOM(
       currentProject,
       items,
@@ -1835,40 +1986,31 @@
   function downloadPdfFile() {
     if (!currentProject) return;
     const options = getPdfExportOptions();
-    let items = currentProject.items || [];
-    if (options.onlyVerified) {
-      items = items.filter(i => i.verified);
-    }
+    const items = currentProject.items || [];
     window.PDFGenerator.downloadPDF(currentProject, items, options);
-    showToast(options.onlyVerified ? '✓ Verified PDF download started' : '✓ PDF download started');
+    showToast('✓ PDF download started');
   }
 
   function downloadCsvFile() {
     if (!currentProject) return;
     const options = getPdfExportOptions();
-    let items = currentProject.items || [];
-    if (options.onlyVerified) {
-      items = items.filter(i => i.verified);
-    }
+    const items = currentProject.items || [];
     window.PDFGenerator.downloadCSV(currentProject, items, options);
-    showToast(options.onlyVerified ? '✓ Verified CSV cut-list downloaded' : '✓ CSV cut-list downloaded');
+    showToast('✓ CSV cut-list downloaded');
   }
 
   async function executeShareSheet() {
     if (!currentProject) return;
     const options = getPdfExportOptions();
-    let items = currentProject.items || [];
-    if (options.onlyVerified) {
-      items = items.filter(i => i.verified);
-    }
+    const items = currentProject.items || [];
     const textSummary = generateTextSummary(currentProject, options, items);
     const cleanTitle = (currentProject.title || 'Measurement_Sheet').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filename = `${cleanTitle}${options.onlyVerified ? '_verified' : ''}.pdf`;
+    const filename = `${cleanTitle}.pdf`;
 
     if (navigator.share) {
       // Direct share invocation inside user activation
       let shareData = {
-        title: `${currentProject.title || 'Measurement Sheet'}${options.onlyVerified ? ' (Verified)' : ''}`,
+        title: currentProject.title || 'Measurement Sheet',
         text: textSummary
       };
 
@@ -1898,7 +2040,7 @@
         if (shareData.files) {
           try {
             await navigator.share({
-              title: `${currentProject.title || 'Measurement Sheet'}${options.onlyVerified ? ' (Verified)' : ''}`,
+              title: currentProject.title || 'Measurement Sheet',
               text: textSummary
             });
             showToast('✓ Shared text summary');
@@ -1919,7 +2061,7 @@
 
   function generateTextSummary(proj, options = {}, customItems = null) {
     const opts = { ...getPdfExportOptions(), ...options };
-    let items = customItems || proj.items || [];
+    let items = (Array.isArray(customItems) ? customItems : null) || proj.items || [];
     if (opts.onlyVerified && !customItems) {
       items = items.filter(i => i.verified);
     }
@@ -1936,11 +2078,12 @@
     items.forEach((item, idx) => {
       const num = String(idx + 1).padStart(2, '0');
       const v = item.verified ? ' [✓]' : '';
-      const display = window.PDFGenerator.getDisplayItem(item, commonUnit);
+      const display = window.PDFGenerator.getDisplayItem(item, commonUnit, opts.areaUnitFormat || '');
       const u = display.unit || item.unit || '';
+      const au = display.areaUnit || (u ? `${u}²` : 'unit²');
 
       if (display.area !== null) {
-        areaByUnit[u] = (areaByUnit[u] || 0) + display.area;
+        areaByUnit[au] = (areaByUnit[au] || 0) + display.area;
       }
       if (display.volume !== null) {
         volByUnit[u] = (volByUnit[u] || 0) + display.volume;
@@ -1948,13 +2091,14 @@
 
       let extra = '';
       if (opts.includeArea && display.area !== null) {
-        extra += ` [Area: ${window.PDFGenerator.formatNumber(display.area)} ${u}²]`;
+        const areaFmt = window.PDFGenerator.formatAreaNumber ? window.PDFGenerator.formatAreaNumber(display.area) : window.PDFGenerator.formatNumber(display.area);
+        extra += ` [Area: ${areaFmt} ${au}]`;
       }
       if (opts.includeVolume && display.volume !== null) {
         extra += ` [Vol: ${window.PDFGenerator.formatNumber(display.volume)} ${u}³]`;
       }
 
-      text += `${num}. ${item.label}: ${display.value} ${u}${extra}${v}`;
+      text += `${num}. ${item.label}${v}: ${display.value} ${u}${extra}`;
       if (opts.includeCategories && item.category) text += ` [${item.category}]`;
       if (opts.includeNotes && item.notes) text += ` (${item.notes})`;
       text += `\n`;
@@ -1964,7 +2108,10 @@
     text += `Total items: ${items.length}\n`;
 
     if (opts.includeArea) {
-      const aTotals = Object.entries(areaByUnit).map(([u, val]) => `${window.PDFGenerator.formatNumber(val)} ${u}²`);
+      const aTotals = Object.entries(areaByUnit).map(([u, val]) => {
+        const areaFmt = window.PDFGenerator.formatAreaNumber ? window.PDFGenerator.formatAreaNumber(val) : window.PDFGenerator.formatNumber(val);
+        return `${areaFmt} ${u}`;
+      });
       if (aTotals.length > 0) text += `Total Area: ${aTotals.join(', ')}\n`;
     }
     if (opts.includeVolume) {
@@ -1997,6 +2144,9 @@
 
   function copyTextSummary(customItems = null, customOptions = null) {
     if (!currentProject) return;
+    if (customItems && (!Array.isArray(customItems) || (typeof Event !== 'undefined' && customItems instanceof Event))) {
+      customItems = null;
+    }
     const text = generateTextSummary(currentProject, customOptions || {}, customItems);
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2139,11 +2289,10 @@
       currentProject.items.push({
         id: 'm_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
         label: item.label,
-        value: item.value || '0',
+        value: item.value || '',
         unit: item.unit || 'cm',
         category: item.category || 'General',
         notes: item.notes || '',
-        verified: false,
         createdAt: new Date().toISOString()
       });
     });
@@ -2169,11 +2318,10 @@
       currentProject.items.push({
         id: 'm_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
         label: item.label,
-        value: item.value || '0',
+        value: item.value || '',
         unit: item.unit || 'cm',
         category: item.category || 'General',
         notes: item.notes || '',
-        verified: false,
         createdAt: new Date().toISOString()
       });
     });
@@ -2287,7 +2435,8 @@
         cm: 10,
         m: 1000,
         in: 25.4,
-        ft: 304.8
+        ft: 304.8,
+        yd: 914.4
       };
 
       const mmVal = val * (toMm[from] || 1);
@@ -2364,41 +2513,10 @@
       return;
     }
 
-    const toMeters = {
-      mm: 0.001,
-      cm: 0.01,
-      m: 1.0,
-      in: 0.0254,
-      ft: 0.3048,
-      yd: 0.9144
-    };
-
-    const convertValuePart = (valStr, fromUnit, toUnit) => {
-      if (fromUnit === toUnit) return valStr;
-
-      if (valStr.includes('×') || (valStr.search(/\s+[xX]\s+/) !== -1)) {
-        return valStr.split(/\s*[×xX]\s*/)
-          .map(part => convertValuePart(part.trim(), fromUnit, toUnit))
-          .join(' × ');
-      }
-
-      const num = parseFractionOrDecimal(valStr, fromUnit);
-      if (isNaN(num) || num === 0) return valStr;
-
-      const meters = num * (toMeters[fromUnit] || 0.01);
-      const converted = meters / (toMeters[toUnit] || 0.01);
-
-      if (toUnit === 'mm') return String(Math.round(converted));
-      if (toUnit === 'cm') return String(Math.round(converted * 10) / 10);
-      if (toUnit === 'm') return String(Math.round(converted * 1000) / 1000);
-      if (toUnit === 'in' || toUnit === 'ft' || toUnit === 'yd') return String(Math.round(converted * 100) / 100);
-      return String(Math.round(converted * 100) / 100);
-    };
-
     let convertedCount = 0;
     currentProject.items.forEach(item => {
       const from = (item.unit || 'cm').toLowerCase();
-      item.value = convertValuePart(item.value, from, targetUnit);
+      item.value = convertInputValueString(item.value, from, targetUnit);
       item.unit = targetUnit;
       convertedCount++;
     });
@@ -2449,29 +2567,102 @@
       });
     }
 
-    // Composite inputs calculations & unit change & live CAD hint
-    const onDimInputChange = (inputEl) => {
-      updateCadHint(inputEl);
-      if (activeDimMode !== '1d') updateCompositeCalc();
+    // Composite inputs calculations & unit change & live CAD hint & auto unit detection
+    const checkAutoSyncUnit = (inputEl) => {
+      if (!inputEl) return false;
+      const detected = detectUnitFromInputString(inputEl.value);
+      if (detected && el.selectItemUnit && el.selectItemUnit.value !== detected) {
+        el.selectItemUnit.value = detected;
+        lastSelectedUnit = detected;
+        syncUnitDisplay();
+        return true;
+      }
+      return false;
     };
 
-    if (el.inputItemValue) el.inputItemValue.addEventListener('input', () => onDimInputChange(el.inputItemValue));
-    if (el.inputDimL) el.inputDimL.addEventListener('input', () => onDimInputChange(el.inputDimL));
-    if (el.inputDimW) el.inputDimW.addEventListener('input', () => onDimInputChange(el.inputDimW));
-    if (el.inputDimH) el.inputDimH.addEventListener('input', () => onDimInputChange(el.inputDimH));
+    const onDimInputChange = (inputEl) => {
+      // Auto-split if user typed or pasted "120 × 80" or "120 x 80" or "120x80" into Length:
+      if (inputEl === el.inputDimL && inputEl.value) {
+        const val = inputEl.value;
+        if (val.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(val) || (val.search(/\s+[xX]\s+/) !== -1)) {
+          const parts = val.split(/\s*[×xX]\s*/);
+          if (parts.length >= 2) {
+            inputEl.value = parts[0] || '';
+            if (el.inputDimW) el.inputDimW.value = parts[1] || '';
+            if (parts[2] && el.inputDimH) el.inputDimH.value = parts[2] || '';
+          }
+        }
+      }
+      checkAutoSyncUnit(inputEl);
+      updateCompositeCalc();
+    };
+
+    [el.inputDimL, el.inputDimW, el.inputDimH].forEach(inp => {
+      if (!inp) return;
+      inp.addEventListener('input', () => onDimInputChange(inp));
+      inp.addEventListener('blur', () => {
+        const u = el.selectItemUnit ? el.selectItemUnit.value : 'cm';
+        const cleaned = stripRedundantUnit(inp.value, u);
+        if (cleaned !== inp.value) {
+          inp.value = cleaned;
+          updateCompositeCalc();
+        }
+      });
+    });
+
+    // Segmented unit pill chips in Dimension section: mm, cm, m | in, ft
+    const dimUnitPill = document.getElementById('dimUnitPill');
+    if (dimUnitPill) {
+      dimUnitPill.querySelectorAll('.dim-unit-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => {
+          e.preventDefault();
+          const newUnit = chip.dataset.unit;
+          if (!newUnit || (el.selectItemUnit && el.selectItemUnit.value === newUnit)) return;
+          if (el.selectItemUnit) {
+            el.selectItemUnit.value = newUnit;
+            el.selectItemUnit.dispatchEvent(new Event('change'));
+          } else {
+            const oldUnit = lastSelectedUnit || 'cm';
+            const converted = convertMeasurementInputs(oldUnit, newUnit);
+            lastSelectedUnit = newUnit;
+            syncUnitDisplay();
+            updateCompositeCalc();
+            if (converted > 0) {
+              document.querySelectorAll('.toast-conversion').forEach(t => t.remove());
+              const toast = showToast(`✓ Switched to ${newUnit}`, 1200);
+              if (toast) toast.classList.add('toast-conversion');
+            }
+          }
+        });
+      });
+    }
+
+    // Unit badge click: cycle through units cm -> mm -> m -> in -> ft -> yd
+    if (el.inputItemUnitBadge) {
+      el.inputItemUnitBadge.addEventListener('click', () => {
+        const UNIT_CYCLE = ['cm', 'mm', 'm', 'in', 'ft', 'yd'];
+        const current = el.selectItemUnit ? el.selectItemUnit.value : 'cm';
+        const idx = UNIT_CYCLE.indexOf(current);
+        const nextUnit = UNIT_CYCLE[(idx + 1) % UNIT_CYCLE.length] || 'cm';
+        if (el.selectItemUnit) {
+          el.selectItemUnit.value = nextUnit;
+          el.selectItemUnit.dispatchEvent(new Event('change'));
+        }
+      });
+    }
+
     if (el.selectItemUnit) el.selectItemUnit.addEventListener('change', () => {
       const newUnit = el.selectItemUnit.value;
       const converted = convertMeasurementInputs(lastSelectedUnit, newUnit);
       lastSelectedUnit = newUnit;
       syncUnitDisplay();
 
-      updateCadHint();
       updateCompositeCalc();
 
       if (converted > 0) {
         // Replace any previous conversion toast instead of stacking them.
         document.querySelectorAll('.toast-conversion').forEach(t => t.remove());
-        const toast = showToast(`✓ Converted to ${UNIT_LABELS[newUnit] || newUnit}`, 1400);
+        const toast = showToast(`✓ Converted to ${UNIT_SYMBOLS[newUnit] || UNIT_LABELS[newUnit] || newUnit}`, 1400);
         if (toast) toast.classList.add('toast-conversion');
       }
     });
@@ -2529,11 +2720,13 @@
 
     // Category dropdown toggle inside search bar
     el.searchCatBtn.addEventListener('click', toggleCategoryDropdown);
-    document.addEventListener('click', (e) => {
-      if (!el.searchBoxUnified.contains(e.target)) {
+    const handleOutsideCategoryClose = (e) => {
+      if (el.searchBoxUnified && !el.searchBoxUnified.contains(e.target)) {
         closeCategoryDropdown();
       }
-    });
+    };
+    document.addEventListener('pointerdown', handleOutsideCategoryClose);
+    document.addEventListener('click', handleOutsideCategoryClose);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeCategoryDropdown();
@@ -2559,17 +2752,19 @@
     el.btnSaveAndNext.addEventListener('click', () => saveCurrentMeasurement(true));
     el.btnDeleteMeasurement.addEventListener('click', deleteCurrentMeasurement);
 
-    // Label quick suggestion chips
-    el.labelSuggestions.querySelectorAll('.sugg-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        el.inputItemLabel.value = chip.dataset.label;
-        if (activeDimMode === '1d') {
-          el.inputItemValue.focus();
-        } else {
-          el.inputDimL.focus();
-        }
+    // Label quick suggestion chips (if present)
+    if (el.labelSuggestions) {
+      el.labelSuggestions.querySelectorAll('.sugg-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          el.inputItemLabel.value = chip.dataset.label;
+          if (activeDimMode === '1d') {
+            el.inputItemValue.focus();
+          } else {
+            el.inputDimL.focus();
+          }
+        });
       });
-    });
+    }
 
     // Category input auto-updates suggestion chip highlight
     if (el.inputItemCategory) {
@@ -2578,13 +2773,12 @@
       });
     }
 
-    // Track active/focused input among 1D, L, W, H for helpers & keyboard
-    lastActiveDimInput = el.inputItemValue;
-    [el.inputItemValue, el.inputDimL, el.inputDimW, el.inputDimH].forEach(inputEl => {
+    // Track active/focused input among L, W, H for helpers & keyboard
+    lastActiveDimInput = el.inputDimL || el.inputItemValue;
+    [el.inputDimL, el.inputDimW, el.inputDimH, el.inputItemValue].forEach(inputEl => {
       if (!inputEl) return;
       inputEl.addEventListener('focus', () => {
         lastActiveDimInput = inputEl;
-        updateCadHint(inputEl);
       });
     });
 
@@ -2598,10 +2792,10 @@
       input.setSelectionRange(newPos, newPos);
     }
 
-    // Quick numeric increment / fraction / CAD buttons (shared across 1D, 2D, 3D)
+    // Quick numeric increment / fraction / CAD buttons (shared across L, W, H)
     document.querySelectorAll('.quick-value-helpers button').forEach(btn => {
       btn.addEventListener('click', () => {
-        const target = (activeDimMode === '1d') ? el.inputItemValue : (lastActiveDimInput || el.inputDimL);
+        const target = lastActiveDimInput || el.inputDimL || el.inputItemValue;
         if (!target) return;
         const current = target.value.trim();
         const unit = (el.selectItemUnit && el.selectItemUnit.value) ? el.selectItemUnit.value : 'in';
@@ -2611,8 +2805,7 @@
           if (window.CADParser) {
             target.value = window.CADParser.resolveExpressionString(current, unit);
             target.focus();
-            updateCadHint(target);
-            if (activeDimMode !== '1d') updateCompositeCalc();
+            updateCompositeCalc();
           }
           return;
         }
@@ -2622,8 +2815,8 @@
         if (cad) {
           target.focus();
           insertAtCursor(target, cad);
-          updateCadHint(target);
-          if (activeDimMode !== '1d') updateCompositeCalc();
+          checkAutoSyncUnit(target);
+          updateCompositeCalc();
           return;
         }
 
@@ -2631,36 +2824,44 @@
         const frac = btn.dataset.frac;
 
         if (frac) {
-          target.value = current ? `${current.replace(/\s*[¼½¾⅛⅜\d\/]+$/, '')}${frac}`.trim() : frac.trim();
+          const stripped = current.replace(/\s*(?:mm|cm|m|in|ft|yd|"|'|”|′)$/i, '');
+          target.value = stripped ? `${stripped.replace(/\s*(?:[¼½¾⅛⅜]|\d+\/\d+)$/, '')}${frac}`.trim() : frac.trim();
         } else if (inc) {
           const delta = parseFloat(inc) || 0;
           const val = parseFractionOrDecimal(current, unit);
           const base = isNaN(val) ? 0 : val;
-          const next = Math.max(0, Math.round((base + delta) * 10) / 10);
+          const next = Math.max(0, Math.round((base + delta) * 1000) / 1000);
           target.value = next;
         }
 
         target.focus();
-        updateCadHint(target);
-        if (activeDimMode !== '1d') {
-          updateCompositeCalc();
-        }
+        updateCompositeCalc();
       });
     });
 
-    // Keyboard enter navigation for 1D, 2D, 3D inputs
-    if (el.inputItemValue) {
-      el.inputItemValue.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+    // Keyboard navigation for Label, L, W, H
+    if (el.inputItemLabel) {
+      el.inputItemLabel.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          el.btnSaveMeasurement.click();
+          if (el.inputDimL) el.inputDimL.focus();
         }
       });
     }
 
+    [el.inputDimL, el.inputDimW, el.inputDimH].forEach(inputEl => {
+      if (!inputEl) return;
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          el.btnSaveMeasurement.click();
+        }
+      });
+    });
+
     if (el.inputDimL) {
       el.inputDimL.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           if (el.inputDimW) el.inputDimW.focus();
         }
@@ -2669,9 +2870,9 @@
 
     if (el.inputDimW) {
       el.inputDimW.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          if (activeDimMode === '3d' && el.inputDimH) {
+          if (el.inputDimH && (el.inputDimH.value || e.shiftKey)) {
             el.inputDimH.focus();
           } else {
             el.btnSaveMeasurement.click();
@@ -2682,7 +2883,7 @@
 
     if (el.inputDimH) {
       el.inputDimH.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
           el.btnSaveMeasurement.click();
         }
@@ -2729,6 +2930,15 @@
     if (el.pdfIncludeNotes) el.pdfIncludeNotes.addEventListener('change', updatePdfPreview);
     if (el.pdfOnlyVerified) el.pdfOnlyVerified.addEventListener('change', updatePdfPreview);
     if (el.pdfCommonUnit) el.pdfCommonUnit.addEventListener('change', updatePdfPreview);
+    if (el.pdfAreaUnitFormat) {
+      el.pdfAreaUnitFormat.addEventListener('change', () => {
+        if (el.pdfAreaUnitFormat.value && el.pdfIncludeArea && !el.pdfIncludeArea.checked) {
+          el.pdfIncludeArea.checked = true;
+          syncCheckboxChip(el.pdfIncludeArea.closest('.pdf-checkbox-chip'));
+        }
+        updatePdfPreview();
+      });
+    }
 
     // Sync all PDF checkbox chip visual active states on toggle
     document.querySelectorAll('.pdf-checkbox-chip input[type="checkbox"]').forEach(input => {
@@ -2750,7 +2960,7 @@
     el.btnExecutePrint.addEventListener('click', executePrint);
     el.btnDownloadPdf.addEventListener('click', downloadPdfFile);
     if (el.btnDownloadCsv) el.btnDownloadCsv.addEventListener('click', downloadCsvFile);
-    el.btnCopyTextSummary.addEventListener('click', copyTextSummary);
+    el.btnCopyTextSummary.addEventListener('click', () => copyTextSummary());
 
     // Export / Import Backup JSON
     el.btnExportData.addEventListener('click', exportBackup);
@@ -2764,6 +2974,22 @@
 
     // Ensure printable DOM is ready before any print action
     window.addEventListener('beforeprint', updatePdfPreview);
+
+    // Dynamic single line / line-by-line measurement responsive layout
+    window.addEventListener('resize', () => {
+      adjustMeasurementsColLayout();
+    });
+
+    if (window.ResizeObserver && el.measurementList) {
+      let roTimer = null;
+      const ro = new ResizeObserver(() => {
+        if (roTimer) cancelAnimationFrame(roTimer);
+        roTimer = requestAnimationFrame(() => {
+          adjustMeasurementsColLayout();
+        });
+      });
+      ro.observe(el.measurementList);
+    }
   }
 
   // ==========================================================================

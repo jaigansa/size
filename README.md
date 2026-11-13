@@ -19,13 +19,12 @@ A mobile web application designed for rapid on-site measurement notes, photo ann
 - **📏 Fast On-Site Measurement Notes**:
   - **Unified Search & Category Selector**: The category filter is integrated directly inside the search bar as a dropdown list with live item counts, freeing up vertical screen space.
   - **📐 In-line Math & CAD Expressions**: Enter arithmetic and fractional formulas directly into dimension inputs (e.g., `72 + 1/2`, `36.5 * 2`, `14 - 3/8`, `1200 / 4`) with instant evaluation.
-  - **Multi-Dimension 2D & 3D Modes**: Switch between 1D (single value), 2D ($L \times W$), and 3D ($L \times W \times H$) with instant live area and volume calculations.
+  - **Smart Multi-Dimension Inputs**: Seamless $L \times W \times H$ fields that automatically adapt to 1D (single value), 2D ($L \times W$), or 3D ($L \times W \times H$) based on user input, with instant live area and volume calculations.
   - **↕️ Item Reordering**: Dedicated up/down controls on every card to order measurements logically.
-  - Quick dimension suggestions (*Length, Width, Height, Depth, Thickness, Waist, Chest, Inseam*).
   - Multi-unit support: `cm`, `in` (inches), `mm`, `m`, `ft` (feet), `yd` (yards).
   - Quick fraction & step adjustments (`+1`, `-1`, `+0.5`, `¼`, `½`, `¾`).
   - **"Save & Next"** button for rapid consecutive data entry on touch screens.
-  - Verification checkmark toggle (`[✓] Verified`) for tracking checked items on site.
+  - **[✓] Verified On-Site Toggle**: 1-tap checkmark toggle directly on cards and inside the editor to track verified measurements on site, with an **"Only Verified"** export filter.
   - Categorization with color tags and real-time category filtering.
   - **↩️ Undo Toast**: Restore deleted items immediately with a 1-tap Undo button.
 

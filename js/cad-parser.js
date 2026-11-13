@@ -76,6 +76,45 @@ const CADParser = {
     // 1. Detect mixed fraction e.g. "5 1/4\"" -> "(5 + 1/4)\""
     s = s.replace(/(\d+)\s+(\d+\/\d+)(['"a-zA-Z]*)/g, "($1 + $2)$3");
 
+    // Pure metric context: no imperial units present, targetUnit is metric (or expression has no explicit units)
+    const isTargetMetric = (targetUnit === 'cm' || targetUnit === 'mm' || targetUnit === 'm');
+    if (!hasImperialUnit && (isTargetMetric || !hasExplicitUnit)) {
+      const metricFactors = { mm: 0.001, cm: 0.01, m: 1.0 };
+      const targetFactor = metricFactors[targetUnit] || 0.01;
+
+      // Convert explicit metric units to targetUnit
+      const metricQtyRegex = /(\([\d\s+\/.]+\)|\d+\/\d+|\d+(?:\.\d+)?)\s*(mm|cm|m)\b/g;
+      s = s.replace(metricQtyRegex, (match, numPart, unitPart) => {
+        const num = this.evalSubExpr(numPart);
+        const fromFactor = metricFactors[unitPart] || 0.01;
+        return String(num * fromFactor / targetFactor);
+      });
+
+      // Handle remaining bare fractions (e.g. "+ 1/4") in targetUnit
+      s = s.replace(/\b(\d+\/\d+)\b/g, (match, fracPart) => {
+        return String(this.evalSubExpr(fracPart));
+      });
+
+      if (!/^[-0-9+*\/().\s]+$/.test(s)) return null;
+
+      let num = 0;
+      try {
+        num = Function(`'use strict'; return (${s})`)();
+      } catch (e) {
+        return null;
+      }
+      if (typeof num !== 'number' || isNaN(num) || !isFinite(num)) return null;
+
+      const totalInches = num / (this.fromInches[targetUnit] || 1);
+      const cleanVal = Math.round(num * 1000) / 1000;
+      return {
+        value: cleanVal,
+        inches: totalInches,
+        formatted: String(cleanVal),
+        isExpression: /[-+*/]/.test(exprStr)
+      };
+    }
+
     // 2. Detect feet followed immediately by inches e.g. "1' 5\"" or "1' (5 + 1/4)\"" or "1' 5"
     // Ensuring no operator (+, -, *, /) directly intervenes
     s = s.replace(/(\d+(?:\.\d+)?)\s*'\s*(?![-+*/])(\([\d\s+\/.]+\)|\d+(?:\.\d+)?)\s*("?)/g, "($1' + $2\")");
@@ -231,7 +270,7 @@ const CADParser = {
     }
 
     // Metric target units
-    if (arch) {
+    if (arch && arch !== String(val) && /['"]/.test(arch)) {
       return `= ${val} ${targetUnit} (${arch})`;
     }
     return `= ${val} ${targetUnit}`;
@@ -255,9 +294,9 @@ const CADParser = {
     if (!valStr) return NaN;
     valStr = String(valStr).trim();
 
-    // If composite (e.g. 120 × 80), take first dimension
-    if (valStr.includes('×') || valStr.includes('x') || valStr.includes('X')) {
-      valStr = valStr.split(/[×xX]/)[0].trim();
+    // If composite (e.g. 120 × 80 or 120x80), take first dimension
+    if (valStr.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(valStr) || valStr.search(/\s+[xX]\s+/) !== -1) {
+      valStr = valStr.split(/\s*[×xX]\s*/)[0].trim();
     }
 
     const res = this.parse(valStr, targetUnit);
@@ -273,13 +312,14 @@ const CADParser = {
     const str = valStr.trim();
     if (!str) return str;
 
-    // Check if composite with '×', 'x', or 'X'
-    if (str.includes('×') || str.includes(' x ') || str.includes(' X ')) {
+    const isComposite = str.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(str) || str.search(/\s+[xX]\s+/) !== -1;
+    // Check if composite
+    if (isComposite) {
       const parts = str.split(/\s*[×xX]\s*/);
       return parts.map(p => {
         const parsed = this.parse(p, targetUnit);
         if (parsed && (p.includes('+') || p.includes('-') || p.includes('*') || p.includes('/'))) {
-          return (targetUnit === 'in' || targetUnit === 'ft') ? (parsed.formatted || String(parsed.value)) : String(parsed.value);
+          return (targetUnit === 'in' || targetUnit === 'ft' || targetUnit === "'") ? (parsed.formatted || String(parsed.value)) : String(parsed.value);
         }
         return p;
       }).join(' × ');

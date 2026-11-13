@@ -548,6 +548,11 @@ body {
   z-index: 35;
 }
 
+.search-filter-bar.dropdown-open,
+.search-filter-bar:focus-within {
+  z-index: 90;
+}
+
 .search-box-unified {
   display: flex;
   align-items: center;
@@ -557,12 +562,17 @@ body {
   height: 44px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   position: relative;
+  overflow: visible;
 }
 
 .search-box-unified:focus-within,
 .search-box-unified.dropdown-open {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+.search-box-unified.dropdown-open {
+  z-index: 95;
 }
 
 /* Search Input inside Unified Bar (Left Side) */
@@ -634,6 +644,7 @@ body {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  z-index: 50;
 }
 
 .search-cat-btn {
@@ -643,14 +654,16 @@ body {
   padding: 0 12px 0 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   color: var(--text-primary);
-  font-size: 0.84rem;
+  font-family: inherit;
+  font-size: 0.90rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
-  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
   border-top-right-radius: var(--radius-md);
   border-bottom-right-radius: var(--radius-md);
 }
@@ -659,26 +672,37 @@ body {
   background: var(--bg-surface-elevated);
 }
 
+.search-cat-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
 .search-cat-btn.has-filter {
   color: var(--accent-primary);
 }
 
 .search-cat-icon {
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   display: inline-flex;
   align-items: center;
+  line-height: 1;
 }
 
 .search-cat-label {
-  max-width: 90px;
+  max-width: 95px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.90rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .search-cat-arrow {
+  width: 13px;
+  height: 13px;
   color: var(--text-muted);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -688,32 +712,58 @@ body {
   color: var(--accent-primary);
 }
 
+@keyframes catDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Category Dropdown Popup List (Aligned to the Right) */
 .search-cat-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 7px);
   right: 0;
   left: auto;
-  min-width: 210px;
-  max-width: 280px;
-  max-height: 280px;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
+  max-height: min(340px, 60vh);
   background: var(--card-bg, var(--bg-surface));
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(255, 255, 255, 0.04);
   padding: 6px;
   display: none;
   flex-direction: column;
   gap: 3px;
   overflow-y: auto;
-  z-index: 100;
+  overscroll-behavior: contain;
+  z-index: 1000;
   -webkit-overflow-scrolling: touch;
+  transform-origin: top right;
 }
 
 .search-cat-dropdown.open .search-cat-menu,
 .search-box-unified.dropdown-open .search-cat-menu {
   display: flex !important;
-  opacity: 1;
+  animation: catDropdownIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.search-cat-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.search-cat-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.search-cat-menu::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-full);
 }
 
 .cat-menu-item,
@@ -721,28 +771,37 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 0.84rem;
+  min-height: 42px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 0.90rem;
+  font-family: inherit;
   color: var(--text-primary);
   background: transparent;
   border: none;
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: all 0.12s ease;
-  font-family: inherit;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .cat-menu-item:hover,
 .search-cat-item:hover {
-  background: var(--accent-glow);
-  color: var(--accent-primary);
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+}
+
+.cat-menu-item:focus-visible,
+.search-cat-item:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
 }
 
 .cat-menu-item.active,
 .search-cat-item.active {
-  background: var(--accent-glow);
+  background: var(--accent-glow, rgba(56, 189, 248, 0.14));
   color: var(--accent-primary);
   font-weight: 700;
 }
@@ -751,29 +810,42 @@ body {
 .search-cat-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.90rem;
+  font-weight: 500;
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+}
+
+.cat-menu-item.active .cat-menu-name,
+.search-cat-item.active .search-cat-name {
+  color: var(--accent-primary);
+  font-weight: 700;
 }
 
 .cat-menu-count,
 .search-cat-count {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 1px 7px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  padding: 2px 8px;
   border-radius: var(--radius-full);
   background: var(--bg-surface-elevated);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-left: 8px;
   flex-shrink: 0;
-}
-  color: var(--text-muted);
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
-.cat-menu-item.active .cat-menu-count {
+.cat-menu-item.active .cat-menu-count,
+.search-cat-item.active .search-cat-count {
   background: var(--accent-primary);
   color: #ffffff;
+  font-weight: 700;
 }
 
 /* Measurement Items List */
@@ -788,169 +860,47 @@ body {
   gap: 10px;
 }
 
-/* Measurement Card */
+/* ==========================================================================
+   Measurement Card - Technical Monospace Pill Layout (Theme Synchronized)
+   Left: TITLE & Big Line-by-Line Measurements | Right: Up / 01 / Down Chevrons
+   ========================================================================== */
 .measurement-card {
   background: var(--card-bg, var(--bg-surface));
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 12px 14px;
+  border-radius: 20px;
+  padding: 14px 14px 14px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   cursor: pointer;
-  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   position: relative;
   box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 82px;
+  box-sizing: border-box;
 }
 
 .measurement-card:hover {
   border-color: var(--accent-primary);
-}
-
-.measurement-card.verified {
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2);
+  background: var(--bg-surface-elevated);
+  box-shadow: var(--shadow-md);
 }
 
 .measurement-card:active {
-  transform: scale(0.985);
-  background: var(--bg-surface-elevated);
+  transform: scale(0.992);
 }
 
-.card-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-}
-
-.item-index {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: var(--bg-primary);
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid var(--border-subtle);
-}
-
-.card-details {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.card-label-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.card-label {
-  font-size: 0.98rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Category Badges with Vivid Color Pills */
-.card-cat-badge {
-  font-size: 0.68rem;
-  padding: 2px 7px;
-  border-radius: var(--radius-full);
-  background: rgba(56, 189, 248, 0.14);
-  color: var(--accent-primary);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.card-cat-badge.cat-blue {
-  background: rgba(14, 165, 233, 0.14);
-  color: #38bdf8;
-  border-color: rgba(14, 165, 233, 0.3);
-}
-
-.card-cat-badge.cat-emerald {
-  background: rgba(16, 185, 129, 0.14);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.card-cat-badge.cat-amber {
-  background: rgba(245, 158, 11, 0.14);
-  color: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.card-cat-badge.cat-purple {
-  background: rgba(168, 85, 247, 0.14);
-  color: #c084fc;
-  border-color: rgba(168, 85, 247, 0.3);
-}
-
-.card-cat-badge.cat-rose {
-  background: rgba(244, 63, 94, 0.14);
-  color: #fb7185;
-  border-color: rgba(244, 63, 94, 0.3);
-}
-
-.card-notes {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-.card-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.card-value-box {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.card-value {
-  font-size: 1.28rem;
-  font-weight: 800;
-  color: var(--accent-primary);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  text-shadow: 0 0 12px var(--accent-glow);
-}
-
-.card-unit {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  background: var(--bg-surface-elevated);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  margin-top: 2px;
-  border: 1px solid var(--border-color);
+.measurement-card.verified {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25);
 }
 
 .check-toggle-btn {
   background: none;
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--border-color);
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -959,50 +909,197 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  flex-shrink: 0;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.check-toggle-btn:hover {
+  border-color: var(--success);
+  color: var(--success);
+  transform: scale(1.08);
 }
 
 .check-toggle-btn.checked {
   background: var(--success);
   border-color: var(--success);
-  color: white;
+  color: #ffffff;
+  box-shadow: 0 0 8px var(--success-bg);
 }
 
-/* Card Reorder Controls */
-.card-reorder-group {
+/* 1. Left/Main Column: Title & Big Line-by-Line Measurements */
+.card-main-col {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
   justify-content: center;
+  gap: 5px;
 }
 
-.reorder-btn {
+.card-title {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+.card-measurements-col {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  width: 100%;
+}
+
+.card-measurements-col.is-multiline {
+  flex-direction: column;
+  gap: 3px;
+}
+
+.card-measurements-col.is-multiline .card-dim-line {
+  width: 100%;
+}
+
+.card-dim-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.card-dim-prefix {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  margin-right: 2px;
+}
+
+.card-dim-val {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-shadow: var(--value-text-shadow, none);
+}
+
+.card-dim-unit {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+/* 2. Right Column: Up Arrow | Index Number (01) | Down Arrow */
+.card-right-col {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  width: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.stepper-arrow-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
-  width: 22px;
-  height: 18px;
+  padding: 0;
+  margin: 0;
+  width: 32px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-muted);
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
-  padding: 0;
+  border-radius: 6px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.12s ease, background 0.12s ease, transform 0.08s ease;
 }
 
-.reorder-btn:hover:not(:disabled) {
-  color: var(--accent-primary);
+.stepper-arrow-btn:hover:not(:disabled):not(.disabled) {
+  color: var(--text-primary);
   background: var(--bg-surface-elevated);
 }
 
-.reorder-btn:active:not(:disabled) {
+.stepper-arrow-btn:active:not(:disabled):not(.disabled) {
+  color: var(--accent-primary);
+  background: var(--accent-glow);
   transform: scale(0.9);
 }
 
-.reorder-btn:disabled {
+.stepper-arrow-btn:disabled,
+.stepper-arrow-btn.disabled {
   opacity: 0.18;
   cursor: default;
+  pointer-events: none;
+}
+
+.card-index-num {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+  margin: 0;
+}
+
+/* Empty Filter State */
+.empty-filter-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 16px;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-top: 8px;
+  gap: 8px;
+}
+
+.empty-filter-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.empty-filter-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.empty-filter-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  max-width: 280px;
 }
 
 /* Empty State */
@@ -1296,7 +1393,8 @@ body {
   }
 }
 
-.pdf-common-unit-group {
+.pdf-common-unit-group,
+.pdf-area-unit-group {
   grid-column: 1 / -1;
 }
 
@@ -1929,7 +2027,7 @@ body {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.pdf-checkbox-chip span:not(.chip-badge) {
+.pdf-checkbox-chip span {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -1995,21 +2093,14 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 10px;
-  border-color: rgba(16, 185, 129, 0.35);
-  background: var(--bg-surface-elevated);
-}
-
-.pdf-checkbox-chip.chip-verified span:not(.chip-badge) {
-  flex: initial;
+  border-color: var(--border-color);
 }
 
 .pdf-checkbox-chip.chip-verified:hover {
   border-color: var(--success);
-  color: var(--text-primary);
-  box-shadow: 0 3px 8px var(--success-bg);
 }
 
-.pdf-checkbox-chip.chip-verified .custom-checkbox-input:checked {
+.pdf-checkbox-chip.chip-verified input[type="checkbox"]:checked {
   background-color: var(--success);
   border-color: var(--success);
   box-shadow: 0 0 8px var(--success-bg);
@@ -2499,10 +2590,6 @@ details[open] .branding-arrow {
   text-overflow: ellipsis;
 }
 
-.print-meta-val.verified-all {
-  color: #10b981;
-}
-
 /* Compact Print & Sheet View Mode */
 .print-sheet-frame.is-compact {
   padding: 8px 10px 6px 10px;
@@ -2954,90 +3041,66 @@ details[open] .branding-arrow {
   flex-shrink: 0;
 }
 
-/* Integrated Unit Pill Selector (Always visible in all 1D / 2D / 3D modes) */
+/* Integrated Unit Pill Selector: mm cm m and in ft */
 .dim-unit-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 3px 8px 3px 10px;
-  height: 32px;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.dim-unit-pill:focus-within {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
-}
-
-.dim-unit-tag {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  user-select: none;
-  cursor: pointer;
-}
-
-.dim-unit-select-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-}
-
-/* Compact label shown in the pill; the transparent <select> overlays it so the
-   native dropdown can still show the full, grouped unit names. */
-.dim-unit-value {
-  color: var(--text-primary);
-  font-size: 0.86rem;
-  font-weight: 700;
-  padding-right: 15px;
-  white-space: nowrap;
-  pointer-events: none;
-  min-width: 2.4em;
-}
-
-.dim-unit-chevron {
-  position: absolute;
-  right: 0;
-  color: var(--text-muted);
-  pointer-events: none;
-  flex-shrink: 0;
-  transition: color 0.15s ease;
-}
-
-.dim-unit-pill:hover .dim-unit-chevron,
-.dim-unit-pill:focus-within .dim-unit-chevron {
-  color: var(--accent-primary);
-}
-
-.dim-unit-select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
   background: transparent;
   border: none;
-  opacity: 0;
-  cursor: pointer;
   padding: 0;
-  margin: 0;
-  font-family: inherit;
-  font-size: 0.86rem;
-  font-weight: 700;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
-.dim-unit-select::-ms-expand {
-  display: none;
+.dim-unit-segmented {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 2px 3px;
+  gap: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+
+.dim-unit-chip {
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  line-height: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.12s ease;
+}
+
+.dim-unit-chip:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-elevated);
+}
+
+.dim-unit-chip.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dim-unit-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border-color);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.dim-unit-select-hidden {
+  display: none !important;
 }
 
 /* Dimension Mode Tabs (1D / 2D / 3D) */
@@ -3103,7 +3166,7 @@ details[open] .branding-arrow {
   font-weight: 700;
   color: var(--accent-primary);
   letter-spacing: 0.02em;
-  padding: 10px 14px;
+  padding: 10px 58px 10px 18px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -3114,6 +3177,29 @@ details[open] .branding-arrow {
 .dim-primary-input:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+.dim-input-unit-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 4px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  font-family: inherit;
+  color: var(--accent-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.dim-input-unit-badge:hover {
+  color: var(--text-primary);
 }
 
 /* 2D / 3D Composite Inputs Grid (Responsive Flexbox, Guaranteed Zero Screen Overflow) */
@@ -3208,48 +3294,6 @@ details[open] .branding-arrow {
   word-break: break-word;
 }
 
-/* Live CAD Expression Hint */
-.cad-calc-hint {
-  margin-top: 6px;
-  margin-bottom: 4px;
-  padding: 6px 10px;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.28);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 0.78rem;
-  box-sizing: border-box;
-}
-
-.cad-calc-hint-val {
-  color: var(--accent-primary);
-  font-weight: 600;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cad-calc-hint-btn {
-  background: var(--accent-primary);
-  color: #0f172a;
-  border: none;
-  border-radius: var(--radius-xs, 4px);
-  padding: 2px 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: opacity 0.15s ease;
-}
-
-.cad-calc-hint-btn:hover {
-  opacity: 0.9;
-}
 
 .helper-cad-key {
   border-color: rgba(56, 189, 248, 0.35);
@@ -3305,6 +3349,59 @@ details[open] .branding-arrow {
   .quick-value-helpers button {
     padding: 3px 6px;
     font-size: 0.72rem;
+  }
+  .dim-unit-chip {
+    padding: 3px 6px;
+    font-size: 0.72rem;
+  }
+  .measurement-card {
+    padding: 12px 14px 12px 14px;
+    gap: 10px;
+    border-radius: 18px;
+  }
+  .card-title {
+    font-size: 1.20rem;
+  }
+  .card-dim-val {
+    font-size: 1.20rem;
+  }
+  .card-dim-prefix {
+    font-size: 1.0rem;
+  }
+  .card-index-num {
+    font-size: 0.96rem;
+  }
+  .stepper-arrow-btn {
+    width: 28px;
+    height: 20px;
+  }
+  .search-cat-btn {
+    padding: 0 9px 0 7px;
+    font-size: 0.86rem;
+    gap: 5px;
+  }
+  .search-cat-label {
+    max-width: 80px;
+    font-size: 0.86rem;
+  }
+  .search-cat-menu {
+    min-width: 200px;
+    max-width: calc(100vw - 20px);
+  }
+  .cat-menu-item,
+  .search-cat-item {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 0.86rem;
+  }
+  .cat-menu-name,
+  .search-cat-name {
+    font-size: 0.86rem;
+  }
+  .cat-menu-count,
+  .search-cat-count {
+    font-size: 0.72rem;
+    padding: 1px 7px;
   }
 }
 
@@ -3541,12 +3638,59 @@ details[open] .branding-arrow {
   }
 
   .search-input {
-    font-size: 0.94rem;
+    font-size: 1rem;
+    padding: 0 36px 0 40px;
+  }
+
+  .search-cat-btn {
+    padding: 0 16px 0 12px;
+    font-size: 0.96rem;
+    gap: 8px;
+  }
+
+  .search-cat-icon {
+    font-size: 1.05rem;
   }
 
   .search-cat-label {
-    max-width: 140px;
-    font-size: 0.88rem;
+    max-width: 160px;
+    font-size: 0.96rem;
+  }
+
+  .search-cat-arrow {
+    width: 15px;
+    height: 15px;
+  }
+
+  .search-cat-menu {
+    top: calc(100% + 9px);
+    min-width: 260px;
+    max-width: 380px;
+    max-height: min(440px, 65vh);
+    padding: 8px;
+    border-radius: 16px;
+    gap: 4px;
+  }
+
+  .cat-menu-item,
+  .search-cat-item {
+    min-height: 46px;
+    padding: 11px 14px;
+    border-radius: 11px;
+    font-size: 0.96rem;
+  }
+
+  .cat-menu-name,
+  .search-cat-name {
+    font-size: 0.96rem;
+    gap: 10px;
+  }
+
+  .cat-menu-count,
+  .search-cat-count {
+    font-size: 0.82rem;
+    padding: 3px 10px;
+    margin-left: 12px;
   }
 
   /* Measurement List */
@@ -3554,16 +3698,35 @@ details[open] .branding-arrow {
     padding: 0 24px 24px 24px;
   }
 
+  .dim-unit-chip {
+    padding: 5px 10px;
+    font-size: 0.84rem;
+  }
   .measurement-card {
-    padding: 14px 18px;
+    padding: 16px 20px 16px 22px;
+    gap: 16px;
+    border-radius: 22px;
   }
 
-  .card-label {
-    font-size: 1.05rem;
+  .card-title {
+    font-size: 1.45rem;
   }
 
-  .card-value {
-    font-size: 1.4rem;
+  .card-dim-val {
+    font-size: 1.45rem;
+  }
+
+  .card-right-col {
+    width: 36px;
+  }
+
+  .stepper-arrow-btn {
+    width: 36px;
+    height: 26px;
+  }
+
+  .card-index-num {
+    font-size: 1.15rem;
   }
 
   /* Bottom Actions Bar */
@@ -3660,7 +3823,7 @@ details[open] .branding-arrow {
 
   .dim-primary-input {
     font-size: 1.55rem;
-    padding: 12px 16px;
+    padding: 12px 64px 12px 20px;
   }
 
   .composite-calc-badge {
@@ -3739,7 +3902,7 @@ details[open] .branding-arrow {
 
   .search-cat-label {
     max-width: 180px;
-    font-size: 0.90rem;
+    font-size: 0.98rem;
   }
 
   .measurement-list-container {
@@ -4039,10 +4202,6 @@ details[open] .branding-arrow {
   .print-meta-val {
     font-size: 7.5pt !important;
     color: #000000 !important;
-  }
-
-  .print-meta-val.verified-all {
-    color: #059669 !important;
   }
 
   .print-content-columns {

@@ -58,7 +58,7 @@ const PDFGenerator = {
 
     const unit = (item && item.unit) ? item.unit : 'in';
     const val = String(item.value || '').trim();
-    if (val.includes('×') || (val.search(/\s+[xX]\s+/) !== -1)) {
+    if (val.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(val) || (val.search(/\s+[xX]\s+/) !== -1)) {
       const parts = val.split(/\s*[×xX]\s*/).map(s => s.trim()).filter(Boolean);
       if (parts.length >= 2) {
         const d1 = this.parseSingleDimension(parts[0], unit);
@@ -84,6 +84,16 @@ const PDFGenerator = {
     return rounded.toLocaleString('en-US', { maximumFractionDigits: 2 });
   },
 
+  formatAreaNumber(num) {
+    if (num === null || num === undefined || isNaN(num)) return '—';
+    if (num > 0 && num < 0.01) {
+      const rounded = Math.round(num * 10000) / 10000;
+      return rounded.toLocaleString('en-US', { maximumFractionDigits: 4 });
+    }
+    const rounded = Math.round(num * 100) / 100;
+    return rounded.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  },
+
   // Linear unit factors relative to one meter (mirrors app.js so printed
   // conversions match what the on-screen unit switcher does).
   unitFactors: {
@@ -91,11 +101,31 @@ const PDFGenerator = {
     cm: 0.01,
     m: 1,
     in: 0.0254,
+    '"': 0.0254,
     ft: 0.3048,
+    "'": 0.3048,
     yd: 0.9144
   },
 
-  unitDecimals: { mm: 1, cm: 2, m: 4, in: 3, ft: 4, yd: 4 },
+  // Area unit factors relative to one square meter (m²)
+  areaFactors: {
+    'sq m': 1,
+    'm²': 1,
+    'sq cm': 0.0001,
+    'cm²': 0.0001,
+    'sq mm': 0.000001,
+    'mm²': 0.000001,
+    'sq in': 0.00064516,
+    'in²': 0.00064516,
+    'sq ft': 0.09290304,
+    'ft²': 0.09290304,
+    'sq yd': 0.83612736,
+    'yd²': 0.83612736,
+    'ac': 4046.8564224,
+    'ha': 10000
+  },
+
+  unitDecimals: { mm: 1, cm: 2, m: 4, in: 3, '"': 3, ft: 4, "'": 4, yd: 4 },
 
   convertLinear(value, fromUnit, toUnit) {
     if (!isFinite(value) || !fromUnit || !toUnit || fromUnit === toUnit) return value;
@@ -136,7 +166,7 @@ const PDFGenerator = {
     const str = String(raw || '').trim();
     if (!str || !fromUnit || !toUnit || fromUnit === toUnit) return str;
 
-    if (str.includes('×') || str.search(/\s+[xX]\s+/) !== -1) {
+    if (str.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(str) || str.search(/\s+[xX]\s+/) !== -1) {
       return str.split(/\s*[×xX]\s*/).map(part => {
         const num = this.parseDimensionPrecise(part.trim(), fromUnit);
         if (isNaN(num)) return part.trim();
@@ -149,32 +179,63 @@ const PDFGenerator = {
     return this.formatLinear(this.convertLinear(num, fromUnit, toUnit), toUnit);
   },
 
-  // Resolves an item for display in the requested common unit. Area and volume
-  // scale by the square / cube of the linear conversion factor.
-  getDisplayItem(item, commonUnit) {
+  // Resolves an item for display in the requested common unit and area unit format.
+  // Linear dimensions scale to commonUnit. Area resolves to areaUnitFormat if given,
+  // or scales to commonUnit² / original unit².
+  getDisplayItem(item, commonUnit, areaUnitFormat) {
     const geom = this.getItemGeometry(item);
     const fromUnit = item.unit || '';
 
-    if (!commonUnit || !fromUnit || commonUnit === fromUnit) {
-      return {
-        value: item.value,
-        unit: fromUnit,
-        area: geom.area,
-        volume: geom.volume,
-        converted: false
-      };
+    let displayValue = item.value;
+    let displayUnit = fromUnit;
+    let displayVolume = geom.volume;
+    let converted = false;
+
+    if (commonUnit && fromUnit && commonUnit !== fromUnit) {
+      const fromFactor = this.unitFactors[fromUnit];
+      const toFactor = this.unitFactors[commonUnit];
+      if (fromFactor !== undefined && toFactor !== undefined) {
+        const ratio = fromFactor / toFactor;
+        displayValue = this.convertValueString(item.value, fromUnit, commonUnit);
+        displayUnit = commonUnit;
+        displayVolume = geom.volume !== null ? geom.volume * ratio * ratio * ratio : null;
+        converted = true;
+      }
     }
 
-    const fromFactor = this.unitFactors[fromUnit];
-    const toFactor = this.unitFactors[commonUnit];
-    const ratio = (fromFactor !== undefined && toFactor !== undefined) ? fromFactor / toFactor : 1;
+    let displayArea = null;
+    let displayAreaUnit = '';
+
+    if (geom.area !== null) {
+      if (areaUnitFormat && this.areaFactors[areaUnitFormat]) {
+        const fromLinFactor = this.unitFactors[fromUnit] !== undefined ? this.unitFactors[fromUnit] : (this.unitFactors[displayUnit] || 1);
+        const areaSqM = geom.area * fromLinFactor * fromLinFactor;
+        const targetFactor = this.areaFactors[areaUnitFormat];
+        displayArea = areaSqM / targetFactor;
+        displayAreaUnit = areaUnitFormat;
+        converted = true;
+      } else {
+        if (commonUnit && fromUnit && commonUnit !== fromUnit) {
+          const fromFactor = this.unitFactors[fromUnit];
+          const toFactor = this.unitFactors[commonUnit];
+          const ratio = (fromFactor !== undefined && toFactor !== undefined) ? fromFactor / toFactor : 1;
+          displayArea = geom.area * ratio * ratio;
+        } else {
+          displayArea = geom.area;
+        }
+        displayAreaUnit = displayUnit ? `${displayUnit}²` : (fromUnit ? `${fromUnit}²` : '');
+      }
+    } else {
+      displayAreaUnit = areaUnitFormat || (displayUnit ? `${displayUnit}²` : '');
+    }
 
     return {
-      value: this.convertValueString(item.value, fromUnit, commonUnit),
-      unit: commonUnit,
-      area: geom.area !== null ? geom.area * ratio * ratio : null,
-      volume: geom.volume !== null ? geom.volume * ratio * ratio * ratio : null,
-      converted: true
+      value: displayValue,
+      unit: displayUnit,
+      area: displayArea,
+      areaUnit: displayAreaUnit,
+      volume: displayVolume,
+      converted
     };
   },
 
@@ -186,14 +247,15 @@ const PDFGenerator = {
       title: project.title ? `MEASUREMENT SHEET: ${project.title.toUpperCase()}` : 'MEASUREMENT SPECIFICATION SHEET',
       client: project.client || 'General',
       date: project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : new Date().toLocaleDateString(),
-      includeSketch: !!sketchDataUrl,
-      includeSignature: true,
+      includeSketch: false,
+      includeSignature: false,
       compact: true,
-      includeArea: true,
-      includeVolume: true,
-      includeCategories: true,
-      includeNotes: true,
+      includeArea: false,
+      includeVolume: false,
+      includeCategories: false,
+      includeNotes: false,
       onlyVerified: false,
+      areaUnitFormat: '',
       companyName: '',
       companyContact: '',
       companyLogo: null
@@ -206,11 +268,10 @@ const PDFGenerator = {
 
     const incArea = !!opts.includeArea;
     const incVolume = !!opts.includeVolume;
-    const incCategories = (opts.includeCategories !== undefined) ? !!opts.includeCategories : true;
-    const incNotes = (opts.includeNotes !== undefined) ? !!opts.includeNotes : true;
+    const incCategories = (opts.includeCategories !== undefined) ? !!opts.includeCategories : false;
+    const incNotes = (opts.includeNotes !== undefined) ? !!opts.includeNotes : false;
     const onlyVerified = !!opts.onlyVerified;
 
-    // Filter to verified items only if requested
     if (onlyVerified) {
       items = items.filter(i => i.verified);
     }
@@ -218,7 +279,8 @@ const PDFGenerator = {
     const totalItems = items.length;
     const verifiedCount = items.filter(i => i.verified).length;
     const commonUnit = opts.commonUnit || '';
-    const displayItems = items.map(item => this.getDisplayItem(item, commonUnit));
+    const areaUnitFormat = opts.areaUnitFormat || '';
+    const displayItems = items.map(item => this.getDisplayItem(item, commonUnit, areaUnitFormat));
     
     // Group categories
     const categories = [...new Set(items.map(i => i.category || 'General'))];
@@ -228,8 +290,9 @@ const PDFGenerator = {
     const volByUnit = {};
     displayItems.forEach(display => {
       const u = display.unit || 'unit';
+      const au = display.areaUnit || (display.unit ? `${display.unit}²` : 'unit²');
       if (display.area !== null) {
-        areaByUnit[u] = (areaByUnit[u] || 0) + display.area;
+        areaByUnit[au] = (areaByUnit[au] || 0) + display.area;
       }
       if (display.volume !== null) {
         volByUnit[u] = (volByUnit[u] || 0) + display.volume;
@@ -237,7 +300,7 @@ const PDFGenerator = {
     });
 
     const areaTotalStrs = Object.entries(areaByUnit).map(
-      ([u, val]) => `${this.formatNumber(val)} ${u}²`
+      ([u, val]) => `${this.formatAreaNumber(val)} ${u}`
     );
     const volTotalStrs = Object.entries(volByUnit).map(
       ([u, val]) => `${this.formatNumber(val)} ${u}³`
@@ -246,13 +309,12 @@ const PDFGenerator = {
     let rowsHtml = '';
     items.forEach((item, idx) => {
       const num = String(idx + 1).padStart(2, '0');
-      const verifiedTag = item.verified ? ' [✓]' : '';
       const display = displayItems[idx];
       const unit = display.unit || '';
 
       const areaCell = incArea ? `
         <td class="print-val-cell print-area-cell">
-          ${display.area !== null ? `${this.formatNumber(display.area)} <span class="print-unit-mini">${this.escapeHtml(unit)}²</span>` : '<span class="print-na">—</span>'}
+          ${display.area !== null ? `${this.formatAreaNumber(display.area)} <span class="print-unit-mini">${this.escapeHtml(display.areaUnit || `${unit}²`)}</span>` : '<span class="print-na">—</span>'}
         </td>
       ` : '';
 
@@ -275,7 +337,6 @@ const PDFGenerator = {
           <td style="text-align: center; color: #64748b; font-weight: 600;">${num}</td>
           <td>
             <strong>${this.escapeHtml(item.label)}</strong>
-            ${verifiedTag ? '<span style="color:#10b981;font-size:6.5pt;margin-left:4px;font-weight:700;">VERIFIED</span>' : ''}
           </td>
           <td class="print-val-cell">${this.escapeHtml(display.value)}</td>
           <td class="print-unit-cell">${this.escapeHtml(unit)}</td>
@@ -513,10 +574,11 @@ const PDFGenerator = {
 
     const incArea = (options.includeArea !== undefined) ? !!options.includeArea : (options.includeAreaVolume !== undefined ? !!options.includeAreaVolume : false);
     const incVol = (options.includeVolume !== undefined) ? !!options.includeVolume : (options.includeAreaVolume !== undefined ? !!options.includeAreaVolume : false);
-    const incCategories = (options.includeCategories !== undefined) ? !!options.includeCategories : true;
-    const incNotes = (options.includeNotes !== undefined) ? !!options.includeNotes : true;
+    const incCategories = (options.includeCategories !== undefined) ? !!options.includeCategories : false;
+    const incNotes = (options.includeNotes !== undefined) ? !!options.includeNotes : false;
     const commonUnit = options.commonUnit || '';
-    const displayItems = items.map(item => this.getDisplayItem(item, commonUnit));
+    const areaUnitFormat = options.areaUnitFormat || '';
+    const displayItems = items.map(item => this.getDisplayItem(item, commonUnit, areaUnitFormat));
 
     // Dynamic column layout
     const totalTableWidth = width - margin * 2;
@@ -584,8 +646,9 @@ const PDFGenerator = {
     items.forEach((item, idx) => {
       const display = displayItems[idx];
       const u = display.unit || 'unit';
+      const au = display.areaUnit || (display.unit ? `${display.unit}2` : 'unit2');
       if (display.area !== null) {
-        areaByUnit[u] = (areaByUnit[u] || 0) + display.area;
+        areaByUnit[au] = (areaByUnit[au] || 0) + display.area;
       }
       if (display.volume !== null) {
         volByUnit[u] = (volByUnit[u] || 0) + display.volume;
@@ -615,7 +678,8 @@ const PDFGenerator = {
 
       if (incArea) {
         lines.push(`0.01 0.52 0.78 rg`);
-        const aStr = display.area !== null ? `${this.formatNumber(display.area)} ${display.unit || ''}2` : '-';
+        const aUnit = display.areaUnit || (display.unit ? `${display.unit}2` : '');
+        const aStr = display.area !== null ? `${this.formatAreaNumber(display.area)} ${aUnit}` : '-';
         lines.push(`BT /F2 7.5 Tf ${colX.area} ${tableY - 14} Td (${sanitize(aStr)}) Tj ET`);
       }
 
@@ -641,7 +705,7 @@ const PDFGenerator = {
     });
 
     const areaTotalStrs = Object.entries(areaByUnit).map(
-      ([u, val]) => `${this.formatNumber(val)} ${u}2`
+      ([u, val]) => `${this.formatAreaNumber(val)} ${u}`
     );
     const volTotalStrs = Object.entries(volByUnit).map(
       ([u, val]) => `${this.formatNumber(val)} ${u}3`
@@ -658,7 +722,8 @@ const PDFGenerator = {
       const vOffset = (incArea && areaTotalStrs.length > 0) ? (margin + 200) : margin;
       lines.push(`BT /F2 7.5 Tf ${vOffset} ${bottomY + 40} Td (TOTAL VOLUME: ${sanitize(volTotalStrs.join(', '))}) Tj ET`);
     }
-    if (options.includeSignature !== false) {
+    const incSign = !!options.includeSignature;
+    if (incSign) {
       lines.push(`0.58 0.64 0.72 RG 0.5 w`);
       lines.push(`${margin} ${bottomY + 25} ${margin + 160} ${bottomY + 25} m ${margin + 160} ${bottomY + 25} l S`);
       lines.push(`${width - margin - 160} ${bottomY + 25} ${width - margin} ${bottomY + 25} m ${width - margin} ${bottomY + 25} l S`);
@@ -727,8 +792,8 @@ const PDFGenerator = {
     }
     const incArea = (options.includeArea !== undefined) ? !!options.includeArea : (options.includeAreaVolume !== undefined ? !!options.includeAreaVolume : false);
     const incVolume = (options.includeVolume !== undefined) ? !!options.includeVolume : (options.includeAreaVolume !== undefined ? !!options.includeAreaVolume : false);
-    const incCategories = (options.includeCategories !== undefined) ? !!options.includeCategories : true;
-    const incNotes = (options.includeNotes !== undefined) ? !!options.includeNotes : true;
+    const incCategories = (options.includeCategories !== undefined) ? !!options.includeCategories : false;
+    const incNotes = (options.includeNotes !== undefined) ? !!options.includeNotes : false;
 
     const sanitizeCsv = (val) => {
       if (val === null || val === undefined) return '""';
@@ -756,22 +821,25 @@ const PDFGenerator = {
 
     items.forEach((item, idx) => {
       const geom = this.getItemGeometry(item);
+      const display = this.getDisplayItem(item, options.commonUnit || '', options.areaUnitFormat || '');
       const row = [
         idx + 1,
         item.label || '',
-        item.value || '',
-        item.unit || ''
+        options.commonUnit ? display.value : (item.value || ''),
+        options.commonUnit ? display.unit : (item.unit || '')
       ];
       if (incArea) {
-        row.push(geom.area !== null ? `${Math.round(geom.area * 100) / 100} ${item.unit || ''}²` : '');
+        const aUnit = display.areaUnit || (display.unit ? `${display.unit}²` : (item.unit ? `${item.unit}²` : ''));
+        row.push(display.area !== null ? `${Math.round(display.area * 100) / 100} ${aUnit}` : '');
       }
       if (incVolume) {
-        row.push(geom.volume !== null ? `${Math.round(geom.volume * 100) / 100} ${item.unit || ''}³` : '');
+        const vUnit = display.unit || item.unit || '';
+        row.push(display.volume !== null ? `${Math.round(display.volume * 100) / 100} ${vUnit}³` : '');
       }
       if (incCategories) {
         row.push(item.category || '');
       }
-      row.push(item.verified ? 'YES' : 'NO');
+      row.push(item.verified ? 'Yes' : 'No');
       if (incNotes) {
         row.push(item.notes || '');
       }
@@ -813,11 +881,25 @@ const PDFGenerator = {
     let commaCount = 0;
     let semiCount = 0;
     let inQ = false;
+    let fieldStart = true;
     for (let i = 0; i < firstLine.length; i++) {
       const c = firstLine[i];
-      if (c === '"') inQ = !inQ;
-      else if (!inQ && c === ',') commaCount++;
-      else if (!inQ && c === ';') semiCount++;
+      if (fieldStart && c === '"') {
+        inQ = true;
+        fieldStart = false;
+      } else if (inQ && c === '"') {
+        if (firstLine[i + 1] === '"') {
+          i++;
+        } else {
+          inQ = false;
+        }
+      } else if (!inQ && (c === ',' || c === ';')) {
+        if (c === ',') commaCount++;
+        else semiCount++;
+        fieldStart = true;
+      } else if (fieldStart && c !== ' ' && c !== '\t') {
+        fieldStart = false;
+      }
     }
     if (semiCount > commaCount) {
       delimiter = ';';
@@ -827,21 +909,38 @@ const PDFGenerator = {
     let currentRow = [];
     let currentField = '';
     let insideQuotes = false;
+    let fieldIsQuoted = false;
 
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
       const nextChar = text[i + 1];
 
       if (char === '"') {
-        if (insideQuotes && nextChar === '"') {
-          currentField += '"';
-          i++; // skip escaped quote
+        if (!fieldIsQuoted) {
+          const isLoneQuote = (currentField.trim() === '') &&
+            (nextChar === delimiter || nextChar === '\r' || nextChar === '\n' || nextChar === undefined);
+          if (currentField.trim() === '' && !isLoneQuote) {
+            fieldIsQuoted = true;
+            insideQuotes = true;
+            currentField = '';
+          } else {
+            currentField += '"';
+          }
+        } else if (insideQuotes) {
+          if (nextChar === '"') {
+            currentField += '"';
+            i++; // skip escaped quote
+          } else {
+            insideQuotes = false;
+          }
         } else {
-          insideQuotes = !insideQuotes;
+          currentField += '"';
         }
       } else if (char === delimiter && !insideQuotes) {
         currentRow.push(currentField.trim());
         currentField = '';
+        fieldIsQuoted = false;
+        insideQuotes = false;
       } else if ((char === '\r' || char === '\n') && !insideQuotes) {
         if (char === '\r' && nextChar === '\n') {
           i++; // skip \n in CRLF
@@ -852,6 +951,8 @@ const PDFGenerator = {
         }
         currentRow = [];
         currentField = '';
+        fieldIsQuoted = false;
+        insideQuotes = false;
       } else {
         currentField += char;
       }
@@ -911,7 +1012,17 @@ const PDFGenerator = {
 
     const dataRows = (headerIndex >= 0) ? validRows.slice(headerIndex + 1) : validRows;
     const parsedItems = [];
-    const knownUnits = ['mm', 'cm', 'm', 'in', 'ft', 'yd'];
+    const normalizeUnit = (u) => {
+      if (!u) return '';
+      const lower = String(u).trim().toLowerCase();
+      if (lower === 'in' || lower === 'inch' || lower === 'inches' || lower === '"' || lower === '”') return 'in';
+      if (lower === 'ft' || lower === 'feet' || lower === 'foot' || lower === "'" || lower === '′') return 'ft';
+      if (lower === 'mm' || lower === 'millimeter' || lower === 'millimeters') return 'mm';
+      if (lower === 'cm' || lower === 'centimeter' || lower === 'centimeters') return 'cm';
+      if (lower === 'm' || lower === 'meter' || lower === 'meters') return 'm';
+      if (lower === 'yd' || lower === 'yard' || lower === 'yards') return 'yd';
+      return '';
+    };
 
     for (const row of dataRows) {
       if (!row || row.length === 0) continue;
@@ -930,7 +1041,7 @@ const PDFGenerator = {
         if (colIndices.notes >= 0 && row[colIndices.notes]) notes = row[colIndices.notes];
         if (colIndices.verified >= 0 && row[colIndices.verified]) {
           const v = String(row[colIndices.verified]).trim().toLowerCase();
-          verified = (v === 'yes' || v === 'true' || v === '1' || v === 'y' || v === 'verified');
+          verified = (v === 'yes' || v === 'true' || v === '1' || v === 'y' || v === 'verified' || v === '[x]');
         }
       } else {
         // Positional fallback:
@@ -957,16 +1068,16 @@ const PDFGenerator = {
       category = String(category || 'General').trim();
       notes = String(notes || '').trim();
 
-      // Normalize unit or extract unit embedded in value (e.g. "180 x 90 cm" or "120 mm")
-      const match = value.match(/^([\d\s.xX×\/\-+]+)\s*([a-zA-Z]+)$/);
-      if (match && knownUnits.includes(match[2].toLowerCase())) {
-        value = match[1].trim();
-        unit = match[2].toLowerCase();
-      } else if (knownUnits.includes(unit.toLowerCase())) {
-        unit = unit.toLowerCase();
-      } else {
-        unit = 'cm';
+      // Normalize unit or extract unit embedded in value (e.g. "180 x 90 cm", "36\"", or "120 mm")
+      const valMatch = value.match(/^([\d\s.xX×\/\-+]+)\s*(mm|cm|m|in|inch|inches|ft|feet|foot|yd|yard|yards|"|'|”|′)$/i);
+      if (valMatch) {
+        const u = normalizeUnit(valMatch[2]);
+        if (u) {
+          value = valMatch[1].trim();
+          unit = u;
+        }
       }
+      unit = normalizeUnit(unit) || 'cm';
 
       if (!label && value) {
         label = `Item ${parsedItems.length + 1}`;

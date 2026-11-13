@@ -103,7 +103,7 @@
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" id="searchInput" class="search-input" placeholder="Search measurements or notes..." autocomplete="off">
+          <input type="text" id="searchInput" class="search-input" placeholder="Search..." autocomplete="off">
           <button id="btnClearSearch" class="clear-search-btn" title="Clear search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -230,20 +230,7 @@
         <!-- Label Field -->
         <div class="form-group">
           <label class="form-label" for="inputItemLabel">Dimension / Item Name</label>
-          <input type="text" id="inputItemLabel" class="form-input" placeholder="e.g. Length, Waist, Window Width, Shelf A..." autocomplete="off">
-          
-          <!-- Label suggestions based on context -->
-          <div class="suggestion-chips" id="labelSuggestions">
-            <span class="sugg-chip" data-label="Length">Length</span>
-            <span class="sugg-chip" data-label="Width">Width</span>
-            <span class="sugg-chip" data-label="Height">Height</span>
-            <span class="sugg-chip" data-label="Depth">Depth</span>
-            <span class="sugg-chip" data-label="Thickness">Thickness</span>
-            <span class="sugg-chip" data-label="Clearance">Clearance</span>
-            <span class="sugg-chip" data-label="Chest">Chest</span>
-            <span class="sugg-chip" data-label="Waist">Waist</span>
-            <span class="sugg-chip" data-label="Inseam">Inseam</span>
-          </div>
+          <input type="text" id="inputItemLabel" class="form-input" placeholder="Item name" autocomplete="off">
         </div>
 
         <!-- Dimension Mode & Value Card -->
@@ -257,59 +244,39 @@
               <span>Dimensions</span>
             </div>
 
-            <div class="dim-unit-pill">
-              <label for="selectItemUnit" class="dim-unit-tag">Unit</label>
-              <div class="dim-unit-select-wrap">
-                <span class="dim-unit-value" id="unitSelectDisplay" aria-hidden="true">cm</span>
-                <select id="selectItemUnit" class="dim-unit-select" title="Measurement Unit">
-                  <optgroup label="Metric">
-                    <option value="mm">Millimeters (mm)</option>
-                    <option value="cm" selected>Centimeters (cm)</option>
-                    <option value="m">Meters (m)</option>
-                  </optgroup>
-                  <optgroup label="Imperial">
-                    <option value="in">Inches (in / ")</option>
-                    <option value="ft">Feet (ft / ')</option>
-                    <option value="yd">Yards (yd)</option>
-                  </optgroup>
-                </select>
-                <svg class="dim-unit-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+            <div class="dim-unit-pill" id="dimUnitPill" role="radiogroup" aria-label="Measurement Unit">
+              <div class="dim-unit-segmented">
+                <button type="button" class="dim-unit-chip" data-unit="mm" role="radio" aria-checked="false" title="Millimeters (mm)">mm</button>
+                <button type="button" class="dim-unit-chip active" data-unit="cm" role="radio" aria-checked="true" title="Centimeters (cm)">cm</button>
+                <button type="button" class="dim-unit-chip" data-unit="m" role="radio" aria-checked="false" title="Meters (m)">m</button>
+                <span class="dim-unit-sep" aria-hidden="true"></span>
+                <button type="button" class="dim-unit-chip" data-unit="in" role="radio" aria-checked="false" title="Inches (in)">in</button>
+                <button type="button" class="dim-unit-chip" data-unit="ft" role="radio" aria-checked="false" title="Feet (ft)">ft</button>
+                <button type="button" class="dim-unit-chip" data-unit="yd" role="radio" aria-checked="false" title="Yards (yd)">yd</button>
               </div>
+              <select id="selectItemUnit" class="dim-unit-select-hidden" title="Measurement Unit" tabindex="-1" aria-hidden="true" style="display: none;">
+                <optgroup label="Metric">
+                  <option value="mm">Millimeters (mm)</option>
+                  <option value="cm" selected>Centimeters (cm)</option>
+                  <option value="m">Meters (m)</option>
+                </optgroup>
+                <optgroup label="Imperial">
+                  <option value="in">Inches (in)</option>
+                  <option value="ft">Feet (ft)</option>
+                  <option value="yd">Yards (yd)</option>
+                </optgroup>
+              </select>
             </div>
           </div>
 
-          <!-- Dimension Mode Tabs: 1D / 2D / 3D -->
-          <div class="dim-mode-tabs" id="dimModeTabs" role="tablist">
-            <button type="button" class="dim-mode-tab active" data-dim-mode="1d" role="tab" aria-selected="true">
-              <span class="tab-txt-long">1D Single</span>
-              <span class="tab-txt-short">1D</span>
-            </button>
-            <button type="button" class="dim-mode-tab" data-dim-mode="2d" role="tab" aria-selected="false">
-              <span class="tab-txt-long">2D (L × W)</span>
-              <span class="tab-txt-short">2D</span>
-            </button>
-            <button type="button" class="dim-mode-tab" data-dim-mode="3d" role="tab" aria-selected="false">
-              <span class="tab-txt-long">3D (L × W × H)</span>
-              <span class="tab-txt-short">3D</span>
-            </button>
-          </div>
-
-          <!-- 1D Single Value Field -->
-          <div class="dim-single-container" id="singleValueGrid">
-            <div class="value-input-wrapper">
-              <input type="text" id="inputItemValue" class="form-input dim-primary-input" placeholder="0.0 (e.g. 1' 5&quot; + 1/4&quot;)" autocomplete="off">
-            </div>
-          </div>
-
-          <!-- 2D / 3D Composite Inputs -->
-          <div id="compositeInputsBox" style="display: none;">
+          <!-- L × W × H Value Inputs (Auto-decides 1D, 2D, or 3D) -->
+          <input type="hidden" id="inputItemValue">
+          <div class="composite-inputs-box" id="compositeInputsBox">
             <div class="composite-inputs-grid" id="compositeInputsGrid">
               <div class="dim-input-col">
                 <label class="dim-col-label" for="inputDimL">Length (L)</label>
                 <div class="dim-input-field-wrap">
-                  <input type="text" id="inputDimL" class="form-input dim-field-input" placeholder="0 (e.g. 1' 5&quot; + 1/4&quot;)" autocomplete="off">
+                  <input type="text" id="inputDimL" class="form-input dim-field-input" placeholder="0" autocomplete="off">
                 </div>
               </div>
               <div class="dim-sep" id="sepDimW" aria-hidden="true">×</div>
@@ -319,8 +286,8 @@
                   <input type="text" id="inputDimW" class="form-input dim-field-input" placeholder="0" autocomplete="off">
                 </div>
               </div>
-              <div class="dim-sep" id="sepDimH" aria-hidden="true" style="display: none;">×</div>
-              <div class="dim-input-col" id="colDimH" style="display: none;">
+              <div class="dim-sep" id="sepDimH" aria-hidden="true">×</div>
+              <div class="dim-input-col" id="colDimH">
                 <label class="dim-col-label" for="inputDimH">Height (H)</label>
                 <div class="dim-input-field-wrap">
                   <input type="text" id="inputDimH" class="form-input dim-field-input" placeholder="0" autocomplete="off">
@@ -330,31 +297,21 @@
             <div id="compositeCalcBadge" class="composite-calc-badge" style="display: none;"></div>
           </div>
 
-          <!-- Live CAD & Expression Evaluator Hint -->
-          <div id="cadExprHint" class="cad-calc-hint" style="display: none;"></div>
-
-          <!-- Quick numeric & CAD adjustments (shared, applies to active value input) -->
+          <!-- Quick numeric adjustments (shared, applies to active value input) -->
           <div class="quick-value-helpers">
             <button type="button" class="helper-btn" data-inc="-1">-1</button>
             <button type="button" class="helper-btn" data-inc="+1">+1</button>
             <button type="button" class="helper-btn" data-inc="+0.5">+0.5</button>
-            <button type="button" class="helper-btn helper-cad-key" data-cad="'" title="Feet (')">' (ft)</button>
-            <button type="button" class="helper-btn helper-cad-key" data-cad='"' title='Inches (")'>" (in)</button>
-            <button type="button" class="helper-btn helper-cad-key" data-cad=" + " title="Add (+)">+</button>
-            <button type="button" class="helper-btn helper-cad-key" data-cad=" - " title="Subtract (-)">-</button>
             <button type="button" class="helper-btn" data-frac=" 1/4">¼</button>
             <button type="button" class="helper-btn" data-frac=" 1/2">½</button>
             <button type="button" class="helper-btn" data-frac=" 3/4">¾</button>
-            <button type="button" class="helper-btn" data-frac=" 1/8">⅛</button>
-            <button type="button" class="helper-btn" data-frac=" 3/8">⅜</button>
-            <button type="button" class="helper-btn helper-eval-btn" id="btnEvalCadExpr" title="Evaluate CAD formula immediately">=</button>
           </div>
         </div>
 
         <!-- Category Tag -->
         <div class="form-group">
           <label class="form-label" for="inputItemCategory">Category / Room / Part</label>
-          <input type="text" id="inputItemCategory" class="form-input" placeholder="e.g. Living Room, Kitchen, Hardware, Frame..." list="categoryList" autocomplete="off">
+          <input type="text" id="inputItemCategory" class="form-input" placeholder="Category" list="categoryList" autocomplete="off">
           <datalist id="categoryList">
             <option value="General">
             <option value="Living Room">
@@ -369,15 +326,12 @@
             <option value="Plumbing">
             <option value="Exterior">
           </datalist>
-
-          <!-- Category Quick Suggestion Chips -->
-          <div class="suggestion-chips" id="categorySuggestions"></div>
         </div>
 
         <!-- Notes / Specs -->
         <div class="form-group">
           <label class="form-label" for="inputItemNotes">Notes / Specifications (Optional)</label>
-          <textarea id="inputItemNotes" class="form-textarea" placeholder="e.g. Include 1/2 inch tolerance, Oak grain direction, Seam allowance..."></textarea>
+          <textarea id="inputItemNotes" class="form-textarea" placeholder="Notes"></textarea>
         </div>
 
         <!-- Status Checkbox -->
@@ -427,7 +381,7 @@
             <span>Create New Sheet</span>
           </div>
           <div class="create-sheet-input-row">
-            <input type="text" id="inputNewProjectName" class="form-input" placeholder="Sheet title (e.g. Master Bedroom, Cut List)..." autocomplete="off" style="flex: 1;">
+            <input type="text" id="inputNewProjectName" class="form-input" placeholder="Sheet title" autocomplete="off" style="flex: 1;">
             <button type="button" class="btn btn-primary" id="btnCreateProject" style="height: auto; padding: 0 16px; font-weight: 600;">Create</button>
           </div>
         </div>
@@ -629,7 +583,7 @@
               </div>
               <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label" for="pdfClientInput" style="margin-bottom: 4px; font-size: 0.74rem;">Client / Location</label>
-                <input type="text" id="pdfClientInput" class="form-input" placeholder="e.g. John Doe / Room 204" style="padding: 6px 10px; font-size: 0.8rem;">
+                <input type="text" id="pdfClientInput" class="form-input" placeholder="Client name" style="padding: 6px 10px; font-size: 0.8rem;">
               </div>
               <div class="form-group pdf-common-unit-group" style="margin-bottom: 0;">
                 <label class="form-label" for="pdfCommonUnit" style="margin-bottom: 4px; font-size: 0.74rem;">Common Unit (Print &amp; PDF)</label>
@@ -647,33 +601,57 @@
                   </optgroup>
                 </select>
               </div>
+              <div class="form-group pdf-area-unit-group" style="margin-bottom: 0;">
+                <label class="form-label" for="pdfAreaUnitFormat" style="margin-bottom: 4px; font-size: 0.74rem;">Area Unit Format</label>
+                <select id="pdfAreaUnitFormat" class="form-select" style="padding: 6px 10px; font-size: 0.8rem;" title="Format and convert printed area values">
+                  <option value="">Auto (per linear unit²)</option>
+                  <optgroup label="Metric">
+                    <option value="sq m">Square Meters (sq m)</option>
+                    <option value="m²">Square Meters (m²)</option>
+                    <option value="sq cm">Square Centimeters (sq cm)</option>
+                    <option value="cm²">Square Centimeters (cm²)</option>
+                    <option value="sq mm">Square Millimeters (sq mm)</option>
+                    <option value="mm²">Square Millimeters (mm²)</option>
+                    <option value="ha">Hectares (ha)</option>
+                  </optgroup>
+                  <optgroup label="Imperial">
+                    <option value="sq ft">Square Feet (sq ft)</option>
+                    <option value="ft²">Square Feet (ft²)</option>
+                    <option value="sq in">Square Inches (sq in)</option>
+                    <option value="in²">Square Inches (in²)</option>
+                    <option value="sq yd">Square Yards (sq yd)</option>
+                    <option value="yd²">Square Yards (yd²)</option>
+                    <option value="ac">Acres (ac)</option>
+                  </optgroup>
+                </select>
+              </div>
             </div>
 
             <div class="pdf-checks-group">
               <label class="form-label" style="margin-bottom: 2px; font-size: 0.74rem;">Include In Print &amp; PDF</label>
               <div class="pdf-options-checks">
-                <label class="pdf-checkbox-chip is-checked" title="Include diagram sketch in print/PDF">
-                  <input type="checkbox" id="pdfIncludeSketch" class="custom-checkbox-input" checked>
+                <label class="pdf-checkbox-chip" title="Include diagram sketch in print/PDF">
+                  <input type="checkbox" id="pdfIncludeSketch" class="custom-checkbox-input">
                   <span>Diagram Sketch</span>
                 </label>
-                <label class="pdf-checkbox-chip is-checked" title="Include signature approval lines">
-                  <input type="checkbox" id="pdfIncludeSign" class="custom-checkbox-input" checked>
+                <label class="pdf-checkbox-chip" title="Include signature approval lines">
+                  <input type="checkbox" id="pdfIncludeSign" class="custom-checkbox-input">
                   <span>Signatures</span>
                 </label>
-                <label class="pdf-checkbox-chip is-checked" title="Include calculated surface areas">
-                  <input type="checkbox" id="pdfIncludeArea" class="custom-checkbox-input" checked>
+                <label class="pdf-checkbox-chip" title="Include calculated surface areas">
+                  <input type="checkbox" id="pdfIncludeArea" class="custom-checkbox-input">
                   <span>Area</span>
                 </label>
-                <label class="pdf-checkbox-chip is-checked" title="Include calculated 3D volume">
-                  <input type="checkbox" id="pdfIncludeVolume" class="custom-checkbox-input" checked>
+                <label class="pdf-checkbox-chip" title="Include calculated 3D volume">
+                  <input type="checkbox" id="pdfIncludeVolume" class="custom-checkbox-input">
                   <span>Volume</span>
                 </label>
-                <label class="pdf-checkbox-chip is-checked" title="Include item categories">
-                  <input type="checkbox" id="pdfIncludeCategories" class="custom-checkbox-input" checked>
+                <label class="pdf-checkbox-chip" title="Include item categories">
+                  <input type="checkbox" id="pdfIncludeCategories" class="custom-checkbox-input">
                   <span>Categories</span>
                 </label>
-                <label class="pdf-checkbox-chip is-checked" title="Include item specification notes">
-                  <input type="checkbox" id="pdfIncludeNotes" class="custom-checkbox-input" checked>
+                <label class="pdf-checkbox-chip" title="Include item specification notes">
+                  <input type="checkbox" id="pdfIncludeNotes" class="custom-checkbox-input">
                   <span>Notes</span>
                 </label>
                 <label class="pdf-checkbox-chip chip-verified" id="chipPdfOnlyVerified" title="Print and export only items marked as verified">
@@ -696,8 +674,8 @@
               </summary>
               <div class="branding-body">
                 <div style="display: flex; gap: 8px;">
-                  <input type="text" id="pdfCompanyInput" class="form-input" placeholder="Company / Contractor Name" style="flex: 1.2; font-size: 0.80rem; padding: 6px 10px;">
-                  <input type="text" id="pdfContactInput" class="form-input" placeholder="Phone / Email / Lic #" style="flex: 1; font-size: 0.80rem; padding: 6px 10px;">
+                  <input type="text" id="pdfCompanyInput" class="form-input" placeholder="Company name" style="flex: 1.2; font-size: 0.80rem; padding: 6px 10px;">
+                  <input type="text" id="pdfContactInput" class="form-input" placeholder="Contact info" style="flex: 1; font-size: 0.80rem; padding: 6px 10px;">
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
                   <label class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 4px 10px; cursor: pointer;">
@@ -931,7 +909,7 @@
           <div class="form-label">Fast Unit Conversion</div>
           <div class="converter-row">
             <div>
-              <input type="text" id="convFromVal" class="form-input" value="10" placeholder="0 (or 5 1/4, 1' 5&quot;)" autocomplete="off">
+              <input type="text" id="convFromVal" class="form-input" value="10" placeholder="0" autocomplete="off">
               <select id="convFromUnit" class="form-select" style="margin-top: 6px;">
                 <option value="in">Inches (in)</option>
                 <option value="cm" selected>Centimeters (cm)</option>
@@ -966,9 +944,9 @@
           <!-- Quick Area / Volume Calculator -->
           <div class="form-label" style="margin-top: 10px;">Area & Volume Calculator</div>
           <div class="calc-inputs-grid">
-            <input type="text" id="calcL" class="form-input" placeholder="L (Length)" autocomplete="off">
-            <input type="text" id="calcW" class="form-input" placeholder="W (Width)" autocomplete="off">
-            <input type="text" id="calcH" class="form-input" placeholder="H (Height)" autocomplete="off">
+            <input type="text" id="calcL" class="form-input" placeholder="Length" autocomplete="off">
+            <input type="text" id="calcW" class="form-input" placeholder="Width" autocomplete="off">
+            <input type="text" id="calcH" class="form-input" placeholder="Height" autocomplete="off">
           </div>
           <div style="background: var(--bg-input); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-around; text-align: center;">
             <div>
