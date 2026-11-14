@@ -244,16 +244,53 @@
               <span>Dimensions</span>
             </div>
 
-            <div class="dim-unit-pill" id="dimUnitPill" role="radiogroup" aria-label="Measurement Unit">
-              <div class="dim-unit-segmented">
-                <button type="button" class="dim-unit-chip" data-unit="mm" role="radio" aria-checked="false" title="Millimeters (mm)">mm</button>
-                <button type="button" class="dim-unit-chip active" data-unit="cm" role="radio" aria-checked="true" title="Centimeters (cm)">cm</button>
-                <button type="button" class="dim-unit-chip" data-unit="m" role="radio" aria-checked="false" title="Meters (m)">m</button>
-                <span class="dim-unit-sep" aria-hidden="true"></span>
-                <button type="button" class="dim-unit-chip" data-unit="in" role="radio" aria-checked="false" title="Inches (in)">in</button>
-                <button type="button" class="dim-unit-chip" data-unit="ft" role="radio" aria-checked="false" title="Feet (ft)">ft</button>
-                <button type="button" class="dim-unit-chip" data-unit="yd" role="radio" aria-checked="false" title="Yards (yd)">yd</button>
+            <div class="dim-unit-dropdown" id="dimUnitDropdown">
+              <button type="button" class="dim-unit-dropdown-btn" id="dimUnitDropdownBtn" aria-haspopup="true" aria-expanded="false" title="Select Measurement Unit">
+                <span class="dim-unit-label">Unit</span>
+                <span class="dim-unit-current" id="unitSelectDisplay">cm</span>
+                <svg class="dim-unit-arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+
+              <div class="dim-unit-menu" id="dimUnitMenu" role="menu">
+                <div class="dim-unit-group-title">Metric</div>
+                <button type="button" class="dim-unit-menu-item" data-unit="mm" role="menuitem">
+                  <span class="dim-unit-code">mm</span>
+                  <span class="dim-unit-name">Millimeters</span>
+                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+                <button type="button" class="dim-unit-menu-item active" data-unit="cm" role="menuitem">
+                  <span class="dim-unit-code">cm</span>
+                  <span class="dim-unit-name">Centimeters</span>
+                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+                <button type="button" class="dim-unit-menu-item" data-unit="m" role="menuitem">
+                  <span class="dim-unit-code">m</span>
+                  <span class="dim-unit-name">Meters</span>
+                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+
+                <div class="dim-unit-menu-divider"></div>
+
+                <div class="dim-unit-group-title">Imperial</div>
+                <button type="button" class="dim-unit-menu-item" data-unit="in" role="menuitem">
+                  <span class="dim-unit-code">in</span>
+                  <span class="dim-unit-name">Inches (")</span>
+                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+                <button type="button" class="dim-unit-menu-item" data-unit="ft" role="menuitem">
+                  <span class="dim-unit-code">ft</span>
+                  <span class="dim-unit-name">Feet (')</span>
+                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+                <button type="button" class="dim-unit-menu-item" data-unit="yd" role="menuitem">
+                  <span class="dim-unit-code">yd</span>
+                  <span class="dim-unit-name">Yards</span>
+                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
               </div>
+
               <select id="selectItemUnit" class="dim-unit-select-hidden" title="Measurement Unit" tabindex="-1" aria-hidden="true" style="display: none;">
                 <optgroup label="Metric">
                   <option value="mm">Millimeters (mm)</option>
@@ -606,22 +643,14 @@
                 <select id="pdfAreaUnitFormat" class="form-select" style="padding: 6px 10px; font-size: 0.8rem;" title="Format and convert printed area values">
                   <option value="">Auto (per linear unit²)</option>
                   <optgroup label="Metric">
-                    <option value="sq m">Square Meters (sq m)</option>
                     <option value="m²">Square Meters (m²)</option>
-                    <option value="sq cm">Square Centimeters (sq cm)</option>
                     <option value="cm²">Square Centimeters (cm²)</option>
-                    <option value="sq mm">Square Millimeters (sq mm)</option>
                     <option value="mm²">Square Millimeters (mm²)</option>
-                    <option value="ha">Hectares (ha)</option>
                   </optgroup>
                   <optgroup label="Imperial">
                     <option value="sq ft">Square Feet (sq ft)</option>
-                    <option value="ft²">Square Feet (ft²)</option>
                     <option value="sq in">Square Inches (sq in)</option>
-                    <option value="in²">Square Inches (in²)</option>
                     <option value="sq yd">Square Yards (sq yd)</option>
-                    <option value="yd²">Square Yards (yd²)</option>
-                    <option value="ac">Acres (ac)</option>
                   </optgroup>
                 </select>
               </div>

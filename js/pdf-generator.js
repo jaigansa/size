@@ -12,7 +12,7 @@ const PDFGenerator = {
    */
   parseSingleDimension(valStr, defaultUnit = 'in') {
     if (!valStr) return NaN;
-    valStr = String(valStr).trim();
+    valStr = String(valStr).replace(/^[LWHlwh]\s*:\s*/i, '').trim();
 
     if (typeof window !== 'undefined' && window.CADParser) {
       const num = window.CADParser.evaluateToNumber(valStr, defaultUnit);
@@ -179,6 +179,90 @@ const PDFGenerator = {
     return this.formatLinear(this.convertLinear(num, fromUnit, toUnit), toUnit);
   },
 
+  cleanPartUnit(val, defaultUnit) {
+    if (!val) return '';
+    let str = String(val).trim();
+    if (defaultUnit) {
+      const u = String(defaultUnit).toLowerCase();
+      const escU = u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const uRegex = new RegExp(`\\s*${escU}$`, 'i');
+      if (uRegex.test(str)) {
+        str = str.replace(uRegex, '').trim();
+      }
+    }
+    return str;
+  },
+
+  // Parses dimension values into labeled components: L:, W:, H:, etc.
+  parsePrintDimensionParts(valStr, itemLabel, defaultUnit) {
+    if (!valStr || String(valStr).trim() === '') return [];
+    const str = String(valStr).trim();
+
+    // 1. Detect explicit prefixes (L:..., W:..., H:...)
+    if (/(^|\s)[LWHlwh]:/.test(str)) {
+      const rawParts = str.split(/(?=\b[LWHlwh]:)/i).map(s => s.trim()).filter(Boolean);
+      if (rawParts.length > 1 || /^[LWHlwh]:/i.test(rawParts[0])) {
+        return rawParts.map(p => {
+          const m = p.match(/^([LWHlwh]):\s*(.*)$/i);
+          if (m) {
+            const pfx = m[1].toUpperCase() + ':';
+            let val = m[2].replace(/[×xX]\s*$/, '').trim();
+            val = this.cleanPartUnit(val, defaultUnit);
+            return { prefix: pfx, value: val };
+          }
+          let val = p.replace(/[×xX]\s*$/, '').trim();
+          val = this.cleanPartUnit(val, defaultUnit);
+          return { prefix: 'L:', value: val };
+        });
+      }
+    }
+
+    // 2. Composite split by multiplication separator
+    const splitParts = str.split(/\s*[×xX]\s*/).map(s => s.trim()).filter(Boolean);
+    if (splitParts.length === 0) return [];
+
+    const defaultPrefixes = ['L:', 'W:', 'H:', 'D:'];
+
+    if (splitParts.length === 1) {
+      const lower = (itemLabel || '').toLowerCase();
+      let pfx = 'L:';
+      if (lower.includes('height') || lower.includes('thick') || lower.includes('depth') || lower.includes('rise') || lower.includes('ceiling')) {
+        pfx = 'H:';
+      } else if (lower.includes('width') || lower.includes('span') || lower.includes('opening') || lower.includes('clearance')) {
+        pfx = 'W:';
+      }
+      let pVal = splitParts[0].replace(/^[LWHlwh]\s*:\s*/i, '').trim();
+      pVal = this.cleanPartUnit(pVal, defaultUnit);
+      return [{ prefix: pfx, value: pVal }];
+    }
+
+    return splitParts.map((p, idx) => {
+      let pfx = defaultPrefixes[idx] || `D${idx + 1}:`;
+      const m = p.match(/^([LWHlwh]):\s*(.*)$/i);
+      if (m) {
+        pfx = m[1].toUpperCase() + ':';
+        p = m[2].trim();
+      }
+      let pVal = p.trim();
+      pVal = this.cleanPartUnit(pVal, defaultUnit);
+      return { prefix: pfx, value: pVal };
+    });
+  },
+
+  // Returns formatted HTML with styled L: / W: / H: badges for the print page
+  formatPrintValueHtml(valStr, itemLabel, defaultUnit) {
+    const parts = this.parsePrintDimensionParts(valStr, itemLabel, defaultUnit);
+    if (parts.length === 0) return this.escapeHtml(valStr || '—');
+    return parts.map(p => `<span class="print-dim-pfx">${this.escapeHtml(p.prefix)}</span> ${this.escapeHtml(p.value)}`).join(' <span class="print-dim-sep">×</span> ');
+  },
+
+  // Returns plain text formatted string with L: / W: / H: prefixes
+  formatPrintValueText(valStr, itemLabel, defaultUnit) {
+    const parts = this.parsePrintDimensionParts(valStr, itemLabel, defaultUnit);
+    if (parts.length === 0) return valStr || '—';
+    return parts.map(p => `${p.prefix} ${p.value}`).join(' × ');
+  },
+
   // Resolves an item for display in the requested common unit and area unit format.
   // Linear dimensions scale to commonUnit. Area resolves to areaUnitFormat if given,
   // or scales to commonUnit² / original unit².
@@ -338,7 +422,7 @@ const PDFGenerator = {
           <td>
             <strong>${this.escapeHtml(item.label)}</strong>
           </td>
-          <td class="print-val-cell">${this.escapeHtml(display.value)}</td>
+          <td class="print-val-cell">${this.formatPrintValueHtml(display.value, item.label, unit)}</td>
           <td class="print-unit-cell">${this.escapeHtml(unit)}</td>
           ${areaCell}
           ${volCell}
@@ -424,7 +508,7 @@ const PDFGenerator = {
                 <tr>
                   <th style="width: 26px; text-align: center;">#</th>
                   <th>Item / Dimension</th>
-                  <th style="width: ${(incArea || incVolume) ? '70px' : '75px'}; text-align: right;">Value</th>
+                  <th style="width: ${(incArea || incVolume) ? '115px' : '130px'}; text-align: right;">Value</th>
                   <th style="width: 38px; text-align: center;">Unit</th>
                   ${incArea ? `<th style="width: 68px; text-align: right;">Area</th>` : ''}
                   ${incVolume ? `<th style="width: 68px; text-align: right;">Volume</th>` : ''}
@@ -583,7 +667,7 @@ const PDFGenerator = {
     // Dynamic column layout
     const totalTableWidth = width - margin * 2;
     const wNum = 20;
-    const wVal = (incArea || incVol) ? 58 : 68;
+    const wVal = (incArea || incVol) ? 95 : 110;
     const wUnit = 30;
     const wArea = incArea ? 60 : 0;
     const wVol = incVol ? 60 : 0;
@@ -669,9 +753,10 @@ const PDFGenerator = {
       const label = item.label.length > maxLabelLen ? item.label.substring(0, maxLabelLen - 2) + '..' : item.label;
       lines.push(`BT /F2 8.5 Tf ${colX.label} ${tableY - 14} Td (${sanitize(label)}) Tj ET`);
       
-      // Value in bold blue
+      // Value in bold blue with L: x W: x H:
       lines.push(`0.01 0.52 0.78 rg`);
-      lines.push(`BT /F2 9.5 Tf ${colX.val} ${tableY - 14} Td (${sanitize(display.value)}) Tj ET`);
+      const printValText = this.formatPrintValueText(display.value, item.label, display.unit);
+      lines.push(`BT /F2 8.5 Tf ${colX.val} ${tableY - 14} Td (${sanitize(printValText)}) Tj ET`);
       
       lines.push(`0.2 0.25 0.3 rg`);
       lines.push(`BT /F2 8 Tf ${colX.unit} ${tableY - 14} Td (${sanitize(display.unit || '')}) Tj ET`);

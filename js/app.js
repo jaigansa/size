@@ -502,11 +502,13 @@
     if (!modalElement) return;
     modalElement.classList.remove('active');
     document.body.style.overflow = '';
+    closeDimUnitDropdown();
   }
 
   function closeAllPopups() {
     document.querySelectorAll('.popup-overlay').forEach(p => p.classList.remove('active'));
     document.body.style.overflow = '';
+    closeDimUnitDropdown();
   }
 
   // ==========================================================================
@@ -667,13 +669,22 @@
     yd: 'yd'
   };
 
-  // Keep the compact pill label and inputItemValue unit badge in sync with the native select.
+  // Keep the compact pill label, unit dropdown, and inputItemValue unit badge in sync with the native select.
   function syncUnitDisplay() {
     if (!el.selectItemUnit) return;
     const unit = el.selectItemUnit.value;
     const symbol = UNIT_SYMBOLS[unit] || unit;
     if (el.unitSelectDisplay) el.unitSelectDisplay.textContent = symbol;
     if (el.inputItemUnitBadge) el.inputItemUnitBadge.textContent = symbol;
+
+    const dimUnitMenu = document.getElementById('dimUnitMenu');
+    if (dimUnitMenu) {
+      dimUnitMenu.querySelectorAll('.dim-unit-menu-item').forEach(item => {
+        const isActive = item.dataset.unit === unit;
+        item.classList.toggle('active', isActive);
+        item.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      });
+    }
 
     const dimUnitPill = document.getElementById('dimUnitPill');
     if (dimUnitPill) {
@@ -682,6 +693,15 @@
         chip.classList.toggle('active', isActive);
         chip.setAttribute('aria-checked', isActive ? 'true' : 'false');
       });
+    }
+  }
+
+  function closeDimUnitDropdown() {
+    const dimUnitDropdown = document.getElementById('dimUnitDropdown');
+    const dimUnitDropdownBtn = document.getElementById('dimUnitDropdownBtn');
+    if (dimUnitDropdown) {
+      dimUnitDropdown.classList.remove('open');
+      if (dimUnitDropdownBtn) dimUnitDropdownBtn.setAttribute('aria-expanded', 'false');
     }
   }
 
@@ -813,13 +833,10 @@
     if (!currentProject) return;
     const items = currentProject.items || [];
 
-    // Tally item counts per category (including standard default categories)
+    // Tally item counts per category actually present in the current sheet (no preset categories)
     const catCounts = { ALL: items.length };
-    DEFAULT_CATEGORIES.forEach(cat => {
-      catCounts[cat] = 0;
-    });
     items.forEach(item => {
-      const cat = item.category || 'General';
+      const cat = (item.category && item.category.trim()) ? item.category.trim() : 'General';
       catCounts[cat] = (catCounts[cat] || 0) + 1;
     });
 
@@ -2098,7 +2115,10 @@
         extra += ` [Vol: ${window.PDFGenerator.formatNumber(display.volume)} ${u}³]`;
       }
 
-      text += `${num}. ${item.label}${v}: ${display.value} ${u}${extra}`;
+      const printVal = (window.PDFGenerator && window.PDFGenerator.formatPrintValueText)
+        ? window.PDFGenerator.formatPrintValueText(display.value, item.label, u)
+        : display.value;
+      text += `${num}. ${item.label}${v}: ${printVal} ${u}${extra}`;
       if (opts.includeCategories && item.category) text += ` [${item.category}]`;
       if (opts.includeNotes && item.notes) text += ` (${item.notes})`;
       text += `\n`;
@@ -2610,7 +2630,58 @@
       });
     });
 
-    // Segmented unit pill chips in Dimension section: mm, cm, m | in, ft
+    // Dimension unit dropdown selector & menu
+    const dimUnitDropdown = document.getElementById('dimUnitDropdown');
+    const dimUnitDropdownBtn = document.getElementById('dimUnitDropdownBtn');
+    const dimUnitMenu = document.getElementById('dimUnitMenu');
+
+    function toggleDimUnitDropdown(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (!dimUnitDropdown) return;
+      const isOpen = dimUnitDropdown.classList.contains('open');
+      if (isOpen) {
+        closeDimUnitDropdown();
+      } else {
+        dimUnitDropdown.classList.add('open');
+        if (dimUnitDropdownBtn) dimUnitDropdownBtn.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    if (dimUnitDropdownBtn) {
+      dimUnitDropdownBtn.addEventListener('click', toggleDimUnitDropdown);
+    }
+
+    if (dimUnitMenu) {
+      dimUnitMenu.querySelectorAll('.dim-unit-menu-item').forEach(itemEl => {
+        itemEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newUnit = itemEl.dataset.unit;
+          if (newUnit && el.selectItemUnit && el.selectItemUnit.value !== newUnit) {
+            el.selectItemUnit.value = newUnit;
+            el.selectItemUnit.dispatchEvent(new Event('change'));
+          }
+          closeDimUnitDropdown();
+        });
+      });
+    }
+
+    // Close unit dropdown on outside click or escape
+    document.addEventListener('click', (e) => {
+      if (dimUnitDropdown && !dimUnitDropdown.contains(e.target)) {
+        closeDimUnitDropdown();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && dimUnitDropdown && dimUnitDropdown.classList.contains('open')) {
+        closeDimUnitDropdown();
+      }
+    });
+
+    // Backward-compatibility: Segmented unit pill chips if present in DOM
     const dimUnitPill = document.getElementById('dimUnitPill');
     if (dimUnitPill) {
       dimUnitPill.querySelectorAll('.dim-unit-chip').forEach(chip => {
