@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sizenotes-cache-v33';
+const CACHE_NAME = 'sizenotes-cache-v34';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

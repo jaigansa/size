@@ -181,6 +181,9 @@
     selectItemUnit: document.getElementById('selectItemUnit'),
     unitSelectDisplay: document.getElementById('unitSelectDisplay'),
     inputItemCategory: document.getElementById('inputItemCategory'),
+    categoryInputWrapper: document.getElementById('categoryInputWrapper'),
+    btnCategoryDropdown: document.getElementById('btnCategoryDropdown'),
+    categoryDropdownMenu: document.getElementById('categoryDropdownMenu'),
     inputItemNotes: document.getElementById('inputItemNotes'),
     checkVerified: document.getElementById('checkVerified'),
     verifiedCheckboxCard: document.getElementById('verifiedCheckboxCard'),
@@ -507,12 +510,14 @@
     modalElement.classList.remove('active');
     document.body.style.overflow = '';
     closeDimUnitDropdown();
+    closeModalCategoryDropdown();
   }
 
   function closeAllPopups() {
     document.querySelectorAll('.popup-overlay').forEach(p => p.classList.remove('active'));
     document.body.style.overflow = '';
     closeDimUnitDropdown();
+    closeModalCategoryDropdown();
   }
 
   // ==========================================================================
@@ -1377,36 +1382,163 @@
     }
   }
 
-  function renderCategorySuggestions() {
-    // Combine standard default categories with any existing categories in the current sheet
-    const catSet = new Set(DEFAULT_CATEGORIES);
-    if (currentProject && currentProject.items) {
-      currentProject.items.forEach(it => {
-        if (it.category && it.category.trim()) {
-          catSet.add(it.category.trim());
+  function openModalCategoryDropdown() {
+    if (!el.categoryInputWrapper) return;
+    el.categoryInputWrapper.classList.add('open');
+    if (el.btnCategoryDropdown) el.btnCategoryDropdown.setAttribute('aria-expanded', 'true');
+    const q = el.inputItemCategory ? el.inputItemCategory.value : '';
+    renderCategorySuggestions(q);
+  }
+
+  function closeModalCategoryDropdown() {
+    if (!el.categoryInputWrapper) return;
+    el.categoryInputWrapper.classList.remove('open');
+    if (el.btnCategoryDropdown) el.btnCategoryDropdown.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleModalCategoryDropdown() {
+    if (!el.categoryInputWrapper) return;
+    if (el.categoryInputWrapper.classList.contains('open')) {
+      closeModalCategoryDropdown();
+    } else {
+      openModalCategoryDropdown();
+    }
+  }
+
+  function renderCategorySuggestions(filterQuery = '') {
+    const items = (currentProject && currentProject.items) ? currentProject.items : [];
+
+    // Tally existing categories actually used in this sheet
+    const existingCounts = {};
+    items.forEach(it => {
+      const cat = (it.category && it.category.trim()) ? it.category.trim() : 'General';
+      existingCounts[cat] = (existingCounts[cat] || 0) + 1;
+    });
+
+    const existingCats = Object.keys(existingCounts).sort((a, b) => {
+      // Sort by count descending, then alphabetically
+      if (existingCounts[b] !== existingCounts[a]) {
+        return existingCounts[b] - existingCounts[a];
+      }
+      return a.localeCompare(b);
+    });
+
+    // Preset categories not yet used in this sheet
+    const unusedPresets = DEFAULT_CATEGORIES.filter(cat => !existingCounts[cat]);
+
+    // All available categories combined
+    const allCombined = [...existingCats, ...unusedPresets];
+
+    const q = (filterQuery || '').toLowerCase().trim();
+    const currentVal = (el.inputItemCategory ? el.inputItemCategory.value.trim() : '');
+
+    // 1. Update Datalist so keyboard typing gets autocomplete
+    if (el.categoryList) {
+      el.categoryList.innerHTML = allCombined.map(c => `<option value="${escapeHtml(c)}">`).join('');
+    }
+
+    // 2. Render Dropdown Menu (Existing categories highlighted with counts & presets)
+    if (el.categoryDropdownMenu) {
+      let menuHtml = '';
+
+      const filteredExisting = q 
+        ? existingCats.filter(c => c.toLowerCase().includes(q))
+        : existingCats;
+      const filteredPresets = q 
+        ? unusedPresets.filter(c => c.toLowerCase().includes(q))
+        : unusedPresets;
+
+      if (filteredExisting.length > 0) {
+        menuHtml += `<div class="category-menu-header">Used in this Sheet (${filteredExisting.length})</div>`;
+        filteredExisting.forEach(cat => {
+          const isSelected = currentVal.toLowerCase() === cat.toLowerCase();
+          const count = existingCounts[cat] || 0;
+          menuHtml += `
+            <button type="button" class="cat-menu-item ${isSelected ? 'active' : ''}" data-cat="${escapeHtml(cat)}">
+              <span class="cat-menu-name">
+                <span class="category-menu-dot"></span>
+                <span>${escapeHtml(cat)}</span>
+              </span>
+              <span class="cat-menu-count">${count}</span>
+            </button>
+          `;
+        });
+      }
+
+      if (filteredPresets.length > 0) {
+        if (filteredExisting.length > 0) {
+          menuHtml += `<div class="category-menu-divider"></div>`;
         }
+        menuHtml += `<div class="category-menu-header">Preset Categories</div>`;
+        filteredPresets.forEach(cat => {
+          const isSelected = currentVal.toLowerCase() === cat.toLowerCase();
+          menuHtml += `
+            <button type="button" class="cat-menu-item ${isSelected ? 'active' : ''}" data-cat="${escapeHtml(cat)}">
+              <span class="cat-menu-name">
+                <span class="category-menu-dot" style="opacity: 0.35;"></span>
+                <span>${escapeHtml(cat)}</span>
+              </span>
+            </button>
+          `;
+        });
+      }
+
+      // If user typed something not in list, provide quick "Add new" option
+      if (q && !allCombined.some(c => c.toLowerCase() === q)) {
+        menuHtml += `
+          <div class="category-menu-divider"></div>
+          <button type="button" class="cat-menu-item" data-cat="${escapeHtml(currentVal)}">
+            <span class="cat-menu-name" style="color: var(--accent-primary); font-weight: 600;">
+              <span>+ Use "${escapeHtml(currentVal)}"</span>
+            </span>
+          </button>
+        `;
+      }
+
+      if (!menuHtml) {
+        menuHtml = `<div class="category-menu-empty">No matching categories</div>`;
+      }
+
+      el.categoryDropdownMenu.innerHTML = menuHtml;
+
+      // Bind click listeners on menu items
+      el.categoryDropdownMenu.querySelectorAll('.cat-menu-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const chosen = btn.dataset.cat;
+          if (el.inputItemCategory) {
+            el.inputItemCategory.value = chosen;
+          }
+          closeModalCategoryDropdown();
+          renderCategorySuggestions();
+          if (el.inputItemNotes) el.inputItemNotes.focus();
+        });
       });
     }
-    const allCats = Array.from(catSet);
 
-    // Update datalist so keyboard typing gets autocomplete
-    if (el.categoryList) {
-      el.categoryList.innerHTML = allCats.map(cat => `<option value="${escapeHtml(cat)}">`).join('');
-    }
-
-    // Render quick suggestion chips if container exists
+    // 3. Render Quick-Repeat Chips (Top existing categories)
     if (el.categorySuggestions) {
-      const currentVal = (el.inputItemCategory ? el.inputItemCategory.value.trim() : '').toLowerCase();
-      el.categorySuggestions.innerHTML = allCats.map(cat => {
-        const isMatched = currentVal === cat.toLowerCase();
-        return `<button type="button" class="sugg-chip ${isMatched ? 'active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+      const chipsToShow = (existingCats.length > 0 ? existingCats : DEFAULT_CATEGORIES).slice(0, 6);
+      el.categorySuggestions.innerHTML = chipsToShow.map(cat => {
+        const isMatched = currentVal.toLowerCase() === cat.toLowerCase();
+        const count = existingCounts[cat];
+        return `
+          <button type="button" class="sugg-chip ${isMatched ? 'active' : ''}" data-cat="${escapeHtml(cat)}">
+            ${escapeHtml(cat)}${count ? ` (${count})` : ''}
+          </button>
+        `;
       }).join('');
 
       el.categorySuggestions.querySelectorAll('.sugg-chip').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
+          e.stopPropagation();
           const chosen = btn.dataset.cat;
-          el.inputItemCategory.value = chosen;
+          if (el.inputItemCategory) {
+            el.inputItemCategory.value = chosen;
+          }
+          closeModalCategoryDropdown();
           renderCategorySuggestions();
         });
       });
@@ -3028,12 +3160,40 @@
       });
     }
 
-    // Category input auto-updates suggestion chip highlight
+    // Category input auto-updates suggestion chip highlight & dropdown trigger
     if (el.inputItemCategory) {
       el.inputItemCategory.addEventListener('input', () => {
-        renderCategorySuggestions();
+        openModalCategoryDropdown();
+        renderCategorySuggestions(el.inputItemCategory.value);
+      });
+      el.inputItemCategory.addEventListener('focus', () => {
+        openModalCategoryDropdown();
+      });
+      el.inputItemCategory.addEventListener('click', () => {
+        openModalCategoryDropdown();
       });
     }
+
+    if (el.btnCategoryDropdown) {
+      el.btnCategoryDropdown.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleModalCategoryDropdown();
+      });
+    }
+
+    // Close category dropdown on outside click or Escape
+    document.addEventListener('click', (e) => {
+      if (el.categoryInputWrapper && !el.categoryInputWrapper.contains(e.target)) {
+        closeModalCategoryDropdown();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && el.categoryInputWrapper && el.categoryInputWrapper.classList.contains('open')) {
+        closeModalCategoryDropdown();
+      }
+    });
 
     // Track active/focused input among L, W, H for helpers & keyboard
     lastActiveDimInput = el.inputDimL || el.inputItemValue;
