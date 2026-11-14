@@ -169,6 +169,9 @@
     sepDimW: document.getElementById('sepDimW'),
     sepDimH: document.getElementById('sepDimH'),
     dimSectionTitle: document.getElementById('dimSectionTitle'),
+    dimKbdSegmented: document.getElementById('dimKbdSegmented'),
+    dimKbdChip123: document.getElementById('dimKbdChip123'),
+    dimKbdChipFx: document.getElementById('dimKbdChipFx'),
     compositeCalcBadge: document.getElementById('compositeCalcBadge'),
     btnEvalCadExpr: document.getElementById('btnEvalCadExpr'),
     singleValueGrid: document.getElementById('singleValueGrid'),
@@ -396,6 +399,7 @@
     initSketchPad();
     initConverter();
     bindGlobalListeners();
+    applyKbdMode(currentKbdMode, false);
     updateVerifiedCheckboxUI();
     updateTemplateAppendCheckboxUI();
     syncAllCheckboxChips();
@@ -581,7 +585,7 @@
 
   function parseFractionOrDecimal(valStr, defaultUnit = 'in') {
     if (!valStr) return NaN;
-    valStr = String(valStr).trim();
+    valStr = String(valStr).replace(/^[LWHlwh]\s*:\s*/i, '').trim();
 
     // Check CADParser first (handles architectural CAD expressions like 1' 5" + 1/4", 3' 6" - 2", fractions, etc.)
     if (window.CADParser) {
@@ -705,6 +709,63 @@
     }
   }
 
+  // ==========================================================================
+  // QUICK KEYBOARD MODE CONTROLLER (123 ⟷ fx)
+  // ==========================================================================
+  const KBD_MODE_KEY = 'sizenotes_kbd_mode_v1';
+  let currentKbdMode = '123';
+  try {
+    const saved = localStorage.getItem(KBD_MODE_KEY);
+    if (saved === 'fx' || saved === '123') {
+      currentKbdMode = saved;
+    }
+  } catch (e) {
+    console.warn('LocalStorage unavailable for keyboard mode:', e);
+  }
+
+  function applyKbdMode(mode, refocus = true) {
+    currentKbdMode = (mode === 'fx') ? 'fx' : '123';
+    try {
+      localStorage.setItem(KBD_MODE_KEY, currentKbdMode);
+    } catch (e) {
+      console.warn('Failed to save kbd mode:', e);
+    }
+
+    // Sync segmented toggle buttons
+    const chips = document.querySelectorAll('.dim-kbd-chip');
+    chips.forEach(chip => {
+      const isCurrent = chip.dataset.mode === currentKbdMode;
+      chip.classList.toggle('active', isCurrent);
+      chip.setAttribute('aria-checked', isCurrent ? 'true' : 'false');
+    });
+
+    // Update inputmode on dimension fields: decimal (123) or text (fx)
+    const modeValue = (currentKbdMode === '123') ? 'decimal' : 'text';
+    const targetInputs = [el.inputDimL, el.inputDimW, el.inputDimH, el.inputItemValue].filter(Boolean);
+    targetInputs.forEach(input => {
+      input.setAttribute('inputmode', modeValue);
+    });
+
+    // If modal is active and refocus requested, re-focus so mobile keyboards switch dynamically
+    if (refocus && el.popupMeasurement && el.popupMeasurement.classList.contains('active')) {
+      const target = (document.activeElement && targetInputs.includes(document.activeElement)) 
+        ? document.activeElement 
+        : (lastActiveDimInput || el.inputDimL);
+      if (target && typeof target.focus === 'function') {
+        try {
+          target.blur();
+          setTimeout(() => {
+            target.focus();
+            const len = target.value ? target.value.length : 0;
+            if (target.setSelectionRange) {
+              target.setSelectionRange(len, len);
+            }
+          }, 20);
+        } catch (e) {}
+      }
+    }
+  }
+
   // Detects if a dimension string contains a unit and returns the canonical unit: 'cm', 'mm', 'm', 'in', 'ft', 'yd'
   function detectUnitFromInputString(str) {
     if (!str || typeof str !== 'string') return null;
@@ -785,22 +846,28 @@
   }
 
   // Converts a single input string (plain, fraction, CAD expression or composite)
-  // from one unit to another, preserving the composite "a × b" structure.
+  // from one unit to another, preserving the composite "a × b" structure and directional prefixes.
   function convertInputValueString(raw, fromUnit, toUnit) {
     const str = String(raw || '').trim();
     if (!str) return str;
 
     if (str.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(str) || str.search(/\s+[xX]\s+/) !== -1) {
       return str.split(/\s*[×xX]\s*/).map(part => {
-        const num = parseValueInUnit(part.trim(), fromUnit);
+        const m = part.trim().match(/^([LWHlwh]):\s*(.*)$/i);
+        const prefix = m ? m[1].toUpperCase() + ': ' : '';
+        const rawDim = m ? m[2] : part.trim();
+        const num = parseValueInUnit(rawDim.trim(), fromUnit);
         if (isNaN(num)) return part.trim();
-        return formatUnitValue(convertBetweenUnits(num, fromUnit, toUnit), toUnit);
+        return prefix + formatUnitValue(convertBetweenUnits(num, fromUnit, toUnit), toUnit);
       }).join(' × ');
     }
 
-    const num = parseValueInUnit(str, fromUnit);
+    const m = str.match(/^([LWHlwh]):\s*(.*)$/i);
+    const prefix = m ? m[1].toUpperCase() + ': ' : '';
+    const rawDim = m ? m[2] : str;
+    const num = parseValueInUnit(rawDim.trim(), fromUnit);
     if (isNaN(num)) return str;
-    return formatUnitValue(convertBetweenUnits(num, fromUnit, toUnit), toUnit);
+    return prefix + formatUnitValue(convertBetweenUnits(num, fromUnit, toUnit), toUnit);
   }
 
   // Convert the values already typed into the measurement form when the user
@@ -965,7 +1032,7 @@
         return parts.map(p => {
           const m = p.match(/^([LWHlwh]):\s*(.*?)(mm|cm|m|in|ft|yd|"|'|”|′)?$/i);
           if (m) {
-            const val = m[2].trim() || '--';
+            let val = m[2].replace(/[×xX]\s*$/, '').trim() || '--';
             const unit = m[3] ? m[3].trim() : (defaultUnit || '');
             const cleaned = cleanPartValueAndUnit(val, unit);
             return { prefix: m[1].toUpperCase() + ':', value: cleaned.value, unit: cleaned.unit };
@@ -995,6 +1062,15 @@
       return [{ prefix: pfx, value: cleaned.value, unit: cleaned.unit }];
     }
 
+    if (splitParts.length === 2) {
+      const lower = (itemLabel || '').toLowerCase();
+      const isWidthHeight = lower.includes('door') || lower.includes('window') || lower.includes('opening') || lower.includes('elevation') || (lower.includes('height') && lower.includes('width'));
+      if (isWidthHeight) {
+        defaultPrefixes[0] = 'W:';
+        defaultPrefixes[1] = 'H:';
+      }
+    }
+
     return splitParts.map((p, idx) => {
       let pfx = defaultPrefixes[idx] || `D${idx + 1}:`;
       const pMatch = p.match(/^([LWHlwh]):\s*(.*)$/);
@@ -1005,6 +1081,25 @@
       let pVal = p.trim() || '--';
       const cleaned = cleanPartValueAndUnit(pVal, defaultUnit);
       return { prefix: pfx, value: cleaned.value, unit: cleaned.unit };
+    });
+  }
+
+  // Formats a dimension value string for HTML display.
+  // For imperial / inches (or any value with fractions), renders the fraction part
+  // with a slightly lower (smaller) font size and subscript alignment (.dim-frac).
+  function formatFractionValueHtml(valStr, unit) {
+    if (!valStr || typeof valStr !== 'string') return '';
+    const str = valStr.trim();
+    if (str === '--' || str === '—') return escapeHtml(str);
+
+    const escaped = escapeHtml(str);
+
+    // Matches standard slash fractions e.g. "1/2", "3/4", "15/16", "3/32"
+    // or Unicode vulgar fractions e.g. ½, ¼, ¾, ⅛, ⅜, ⅝, ⅞
+    const fracRegex = /(\d+[\/⁄]\d+|[¼½¾⅛⅜⅝⅞])/g;
+
+    return escaped.replace(fracRegex, (match) => {
+      return `<span class="dim-frac card-dim-frac">${match}</span>`;
     });
   }
 
@@ -1099,7 +1194,7 @@
         dimsHtml += `
           <div class="card-dim-line">
             <span class="card-dim-prefix">${escapeHtml(p.prefix)}</span>
-            <span class="card-dim-val">${escapeHtml(p.value)}</span>
+            <span class="card-dim-val">${formatFractionValueHtml(p.value, p.unit || item.unit)}</span>
             ${p.unit ? `<span class="card-dim-unit">${escapeHtml(p.unit)}</span>` : ''}
           </div>
         `;
@@ -1261,11 +1356,19 @@
       const area = (l * w).toFixed(2).replace(/\.00$/, '');
       el.compositeCalcBadge.textContent = `📦 Vol: ${vol} ${unit}³ • Area: ${area} ${unit}²`;
       el.compositeCalcBadge.style.display = 'block';
-    } else if ((l > 0 && w > 0) || (l > 0 && h > 0) || (w > 0 && h > 0)) {
+    } else if (w > 0 && h > 0 && !(l > 0)) {
       activeDimMode = '2d';
-      const d1 = l > 0 ? l : w;
-      const d2 = (l > 0 && w > 0) ? w : h;
-      const area = (d1 * d2).toFixed(2).replace(/\.00$/, '');
+      const area = (w * h).toFixed(2).replace(/\.00$/, '');
+      el.compositeCalcBadge.textContent = `📐 Area (W × H): ${area} ${unit}²`;
+      el.compositeCalcBadge.style.display = 'block';
+    } else if (l > 0 && h > 0 && !(w > 0)) {
+      activeDimMode = '2d';
+      const area = (l * h).toFixed(2).replace(/\.00$/, '');
+      el.compositeCalcBadge.textContent = `📐 Area (L × H): ${area} ${unit}²`;
+      el.compositeCalcBadge.style.display = 'block';
+    } else if (l > 0 && w > 0) {
+      activeDimMode = '2d';
+      const area = (l * w).toFixed(2).replace(/\.00$/, '');
       el.compositeCalcBadge.textContent = `📐 Area: ${area} ${unit}²`;
       el.compositeCalcBadge.style.display = 'block';
     } else {
@@ -1368,6 +1471,7 @@
     }
     lastSelectedUnit = el.selectItemUnit.value;
     syncUnitDisplay();
+    applyKbdMode(currentKbdMode, false);
 
     renderCategorySuggestions();
     openPopup(el.popupMeasurement);
@@ -1388,30 +1492,76 @@
     if (el.checkVerified) el.checkVerified.checked = !!item.verified;
     updateVerifiedCheckboxUI();
 
-    // Detect if value is composite 2D or 3D
+    // Parse value into L, W, H fields, respecting directional prefixes and item context
     const val = String(item.value || '').trim();
-    if (val.includes('×') || (val.search(/\s+[xX]\s+/) !== -1)) {
+    let lVal = '';
+    let wVal = '';
+    let hVal = '';
+
+    if (/(^|\s)[LWHlwh]:/.test(val)) {
+      const parts = val.split(/(?=\b[LWHlwh]:)/i).map(s => s.trim()).filter(Boolean);
+      parts.forEach(p => {
+        const m = p.match(/^([LWHlwh]):\s*(.*)$/i);
+        if (m) {
+          const pfx = m[1].toUpperCase();
+          const pContent = m[2].replace(/[×xX]\s*$/, '').trim();
+          if (pfx === 'L') lVal = pContent;
+          else if (pfx === 'W') wVal = pContent;
+          else if (pfx === 'H') hVal = pContent;
+        }
+      });
+    }
+
+    if (lVal || wVal || hVal) {
+      if (el.inputDimL) el.inputDimL.value = lVal;
+      if (el.inputDimW) el.inputDimW.value = wVal;
+      if (el.inputDimH) el.inputDimH.value = hVal;
+      if (lVal && wVal && hVal) activeDimMode = '3d';
+      else if ((lVal && wVal) || (wVal && hVal) || (lVal && hVal)) activeDimMode = '2d';
+      else activeDimMode = '1d';
+    } else if (val.includes('×') || (val.search(/\s+[xX]\s+/) !== -1)) {
       const parts = val.split(/\s*[×xX]\s*/).map(s => s.trim());
+      const lower = (item.label || '').toLowerCase();
+      const isWidthHeight = lower.includes('door') || lower.includes('window') || lower.includes('opening') || lower.includes('elevation') || (lower.includes('height') && lower.includes('width'));
+
       if (parts.length >= 3) {
         activeDimMode = '3d';
         if (el.inputDimL) el.inputDimL.value = parts[0] || '';
         if (el.inputDimW) el.inputDimW.value = parts[1] || '';
         if (el.inputDimH) el.inputDimH.value = parts[2] || '';
-      } else {
+      } else if (parts.length === 2) {
         activeDimMode = '2d';
-        if (el.inputDimL) el.inputDimL.value = parts[0] || '';
-        if (el.inputDimW) el.inputDimW.value = parts[1] || '';
-        if (el.inputDimH) el.inputDimH.value = '';
+        if (isWidthHeight) {
+          if (el.inputDimL) el.inputDimL.value = '';
+          if (el.inputDimW) el.inputDimW.value = parts[0] || '';
+          if (el.inputDimH) el.inputDimH.value = parts[1] || '';
+        } else {
+          if (el.inputDimL) el.inputDimL.value = parts[0] || '';
+          if (el.inputDimW) el.inputDimW.value = parts[1] || '';
+          if (el.inputDimH) el.inputDimH.value = '';
+        }
       }
     } else {
       activeDimMode = '1d';
-      if (el.inputDimL) el.inputDimL.value = val;
-      if (el.inputDimW) el.inputDimW.value = '';
-      if (el.inputDimH) el.inputDimH.value = '';
+      const lower = (item.label || '').toLowerCase();
+      if (lower.includes('height') || lower.includes('rise') || lower.includes('ceiling') || lower.includes('thick')) {
+        if (el.inputDimL) el.inputDimL.value = '';
+        if (el.inputDimW) el.inputDimW.value = '';
+        if (el.inputDimH) el.inputDimH.value = val;
+      } else if (lower.includes('width') || lower.includes('opening') || lower.includes('span')) {
+        if (el.inputDimL) el.inputDimL.value = '';
+        if (el.inputDimW) el.inputDimW.value = val;
+        if (el.inputDimH) el.inputDimH.value = '';
+      } else {
+        if (el.inputDimL) el.inputDimL.value = val;
+        if (el.inputDimW) el.inputDimW.value = '';
+        if (el.inputDimH) el.inputDimH.value = '';
+      }
     }
     if (el.inputItemValue) el.inputItemValue.value = val;
 
-    lastActiveDimInput = el.inputDimL;
+    lastActiveDimInput = (el.inputDimW && el.inputDimW.value && !el.inputDimL.value) ? el.inputDimW : (el.inputDimH && el.inputDimH.value && !el.inputDimL.value ? el.inputDimH : el.inputDimL);
+    applyKbdMode(currentKbdMode, false);
     updateCompositeCalc();
     renderCategorySuggestions();
     openPopup(el.popupMeasurement);
@@ -1424,8 +1574,13 @@
 
     const resolveCad = (str) => {
       if (!str) return '';
-      if (window.CADParser && window.CADParser.isCadExpression(str)) {
-        return window.CADParser.resolveExpressionString(str, unit);
+      if (window.CADParser) {
+        if (window.CADParser.isFractionOrSingleDimension(str)) {
+          return str;
+        }
+        if (window.CADParser.isUnresolvedMathExpression(str)) {
+          return window.CADParser.resolveExpressionString(str, unit);
+        }
       }
       return str;
     };
@@ -1452,19 +1607,41 @@
     w = resolveCad(stripRedundantUnit(w, unit));
     h = resolveCad(stripRedundantUnit(h, unit));
 
+    // Strip accidental leading prefixes from individual fields before saving
+    l = l.replace(/^[LWHlwh]\s*:\s*/i, '').trim();
+    w = w.replace(/^[LWHlwh]\s*:\s*/i, '').trim();
+    h = h.replace(/^[LWHlwh]\s*:\s*/i, '').trim();
+
     if (el.inputDimL) el.inputDimL.value = l;
     if (el.inputDimW) el.inputDimW.value = w;
     if (el.inputDimH) el.inputDimH.value = h;
 
-    const dims = [l, w, h].filter(Boolean);
     if (l && w && h) {
-      value = `${l} × ${w} × ${h}`;
+      value = `L: ${l} × W: ${w} × H: ${h}`;
       activeDimMode = '3d';
-    } else if (dims.length === 2) {
-      value = `${dims[0]} × ${dims[1]}`;
+    } else if (w && h && !l) {
+      // User explicitly entered Width and Height (e.g. doors, windows, walls)
+      value = `W: ${w} × H: ${h}`;
       activeDimMode = '2d';
+    } else if (l && h && !w) {
+      // User entered Length and Height
+      value = `L: ${l} × H: ${h}`;
+      activeDimMode = '2d';
+    } else if (l && w && !h) {
+      // User entered Length and Width
+      value = `L: ${l} × W: ${w}`;
+      activeDimMode = '2d';
+    } else if (h && !l && !w) {
+      // Height only
+      value = `H: ${h}`;
+      activeDimMode = '1d';
+    } else if (w && !l && !h) {
+      // Width only
+      value = `W: ${w}`;
+      activeDimMode = '1d';
     } else {
-      value = dims[0] || '';
+      // Length only
+      value = l || '';
       activeDimMode = '1d';
     }
 
@@ -2480,10 +2657,10 @@
             num /= 2;
             den /= 2;
           }
-          el.fractionResult.textContent = `Fraction: ${whole > 0 ? whole + ' ' : ''}${num}/${den}"`;
+          el.fractionResult.innerHTML = `Fraction: ${whole > 0 ? whole + ' ' : ''}<span class="dim-frac">${num}/${den}</span>"`;
         }
       } else {
-        el.fractionResult.textContent = '';
+        el.fractionResult.innerHTML = '';
       }
     };
 
@@ -2681,6 +2858,20 @@
       }
     });
 
+    // Quick Keyboard Mode Toggle (123 ⟷ fx)
+    document.querySelectorAll('.dim-kbd-chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        const mode = chip.dataset.mode;
+        if (mode && mode !== currentKbdMode) {
+          applyKbdMode(mode, true);
+          showToast(mode === '123' ? '🔢 Numeric Keypad (123)' : '📐 Formula Keyboard (fx)', 900);
+        } else if (mode) {
+          applyKbdMode(mode, true);
+        }
+      });
+    });
+
     // Backward-compatibility: Segmented unit pill chips if present in DOM
     const dimUnitPill = document.getElementById('dimUnitPill');
     if (dimUnitPill) {
@@ -2858,9 +3049,28 @@
       const start = (input.selectionStart != null) ? input.selectionStart : input.value.length;
       const end = (input.selectionEnd != null) ? input.selectionEnd : input.value.length;
       const val = input.value;
-      input.value = val.substring(0, start) + text + val.substring(end);
-      const newPos = start + text.length;
+
+      let insertion = text;
+      // If inserting operator at start of empty input
+      if (start === 0 && val.trim() === '') {
+        if (text === ' - ') insertion = '-';
+        else if (text === ' + ' || text === ' * ' || text === ' / ') insertion = '';
+      } else if (start > 0 && (text === ' + ' || text === ' - ' || text === ' * ' || text === ' / ')) {
+        // Prevent duplicate operators like "10 + + "
+        if (/\s*[+\-*\/]\s*$/.test(val.substring(0, start))) {
+          const replacedVal = val.substring(0, start).replace(/\s*[+\-*\/]\s*$/, '') + text;
+          input.value = replacedVal + val.substring(end);
+          const newPos = replacedVal.length;
+          input.setSelectionRange(newPos, newPos);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+      }
+
+      input.value = val.substring(0, start) + insertion + val.substring(end);
+      const newPos = start + insertion.length;
       input.setSelectionRange(newPos, newPos);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     // Quick numeric increment / fraction / CAD buttons (shared across L, W, H)
@@ -2876,12 +3086,13 @@
           if (window.CADParser) {
             target.value = window.CADParser.resolveExpressionString(current, unit);
             target.focus();
+            target.dispatchEvent(new Event('input', { bubbles: true }));
             updateCompositeCalc();
           }
           return;
         }
 
-        // CAD direct keys (', ", +, -)
+        // CAD direct keys (', ", +, -, *, /, (, ))
         const cad = btn.dataset.cad;
         if (cad) {
           target.focus();
@@ -2906,6 +3117,7 @@
         }
 
         target.focus();
+        target.dispatchEvent(new Event('input', { bubbles: true }));
         updateCompositeCalc();
       });
     });
@@ -2943,7 +3155,7 @@
       el.inputDimW.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          if (el.inputDimH && (el.inputDimH.value || e.shiftKey)) {
+          if (el.inputDimH) {
             el.inputDimH.focus();
           } else {
             el.btnSaveMeasurement.click();

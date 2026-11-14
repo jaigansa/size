@@ -244,65 +244,73 @@
               <span>Dimensions</span>
             </div>
 
-            <div class="dim-unit-dropdown" id="dimUnitDropdown">
-              <button type="button" class="dim-unit-dropdown-btn" id="dimUnitDropdownBtn" aria-haspopup="true" aria-expanded="false" title="Select Measurement Unit">
-                <span class="dim-unit-label">Unit</span>
-                <span class="dim-unit-current" id="unitSelectDisplay">cm</span>
-                <svg class="dim-unit-arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-
-              <div class="dim-unit-menu" id="dimUnitMenu" role="menu">
-                <div class="dim-unit-group-title">Metric</div>
-                <button type="button" class="dim-unit-menu-item" data-unit="mm" role="menuitem">
-                  <span class="dim-unit-code">mm</span>
-                  <span class="dim-unit-name">Millimeters</span>
-                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
-                <button type="button" class="dim-unit-menu-item active" data-unit="cm" role="menuitem">
-                  <span class="dim-unit-code">cm</span>
-                  <span class="dim-unit-name">Centimeters</span>
-                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
-                <button type="button" class="dim-unit-menu-item" data-unit="m" role="menuitem">
-                  <span class="dim-unit-code">m</span>
-                  <span class="dim-unit-name">Meters</span>
-                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
-
-                <div class="dim-unit-menu-divider"></div>
-
-                <div class="dim-unit-group-title">Imperial</div>
-                <button type="button" class="dim-unit-menu-item" data-unit="in" role="menuitem">
-                  <span class="dim-unit-code">in</span>
-                  <span class="dim-unit-name">Inches (")</span>
-                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
-                <button type="button" class="dim-unit-menu-item" data-unit="ft" role="menuitem">
-                  <span class="dim-unit-code">ft</span>
-                  <span class="dim-unit-name">Feet (')</span>
-                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
-                <button type="button" class="dim-unit-menu-item" data-unit="yd" role="menuitem">
-                  <span class="dim-unit-code">yd</span>
-                  <span class="dim-unit-name">Yards</span>
-                  <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
+            <div class="dim-header-controls">
+              <!-- Quick Keyboard Mode Toggle (123 ⟷ fx) -->
+              <div class="dim-kbd-segmented" id="dimKbdSegmented" role="radiogroup" aria-label="Keyboard Input Mode">
+                <button type="button" class="dim-kbd-chip active" id="dimKbdChip123" data-mode="123" role="radio" aria-checked="true" title="Numeric Decimal Keypad (123)">123</button>
+                <button type="button" class="dim-kbd-chip" id="dimKbdChipFx" data-mode="fx" role="radio" aria-checked="false" title="Formula & Math Keyboard (fx)">fx</button>
               </div>
 
-              <select id="selectItemUnit" class="dim-unit-select-hidden" title="Measurement Unit" tabindex="-1" aria-hidden="true" style="display: none;">
-                <optgroup label="Metric">
-                  <option value="mm">Millimeters (mm)</option>
-                  <option value="cm" selected>Centimeters (cm)</option>
-                  <option value="m">Meters (m)</option>
-                </optgroup>
-                <optgroup label="Imperial">
-                  <option value="in">Inches (in)</option>
-                  <option value="ft">Feet (ft)</option>
-                  <option value="yd">Yards (yd)</option>
-                </optgroup>
-              </select>
+              <div class="dim-unit-dropdown" id="dimUnitDropdown">
+                <button type="button" class="dim-unit-dropdown-btn" id="dimUnitDropdownBtn" aria-haspopup="true" aria-expanded="false" title="Select Measurement Unit">
+                  <span class="dim-unit-label">Unit</span>
+                  <span class="dim-unit-current" id="unitSelectDisplay">cm</span>
+                  <svg class="dim-unit-arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+
+                <div class="dim-unit-menu" id="dimUnitMenu" role="menu">
+                  <div class="dim-unit-group-title">Metric</div>
+                  <button type="button" class="dim-unit-menu-item" data-unit="mm" role="menuitem">
+                    <span class="dim-unit-code">mm</span>
+                    <span class="dim-unit-name">Millimeters</span>
+                    <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </button>
+                  <button type="button" class="dim-unit-menu-item active" data-unit="cm" role="menuitem">
+                    <span class="dim-unit-code">cm</span>
+                    <span class="dim-unit-name">Centimeters</span>
+                    <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </button>
+                  <button type="button" class="dim-unit-menu-item" data-unit="m" role="menuitem">
+                    <span class="dim-unit-code">m</span>
+                    <span class="dim-unit-name">Meters</span>
+                    <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </button>
+
+                  <div class="dim-unit-menu-divider"></div>
+
+                  <div class="dim-unit-group-title">Imperial</div>
+                  <button type="button" class="dim-unit-menu-item" data-unit="in" role="menuitem">
+                    <span class="dim-unit-code">in</span>
+                    <span class="dim-unit-name">Inches (")</span>
+                    <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </button>
+                  <button type="button" class="dim-unit-menu-item" data-unit="ft" role="menuitem">
+                    <span class="dim-unit-code">ft</span>
+                    <span class="dim-unit-name">Feet (')</span>
+                    <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </button>
+                  <button type="button" class="dim-unit-menu-item" data-unit="yd" role="menuitem">
+                    <span class="dim-unit-code">yd</span>
+                    <span class="dim-unit-name">Yards</span>
+                    <svg class="dim-unit-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </button>
+                </div>
+
+                <select id="selectItemUnit" class="dim-unit-select-hidden" title="Measurement Unit" tabindex="-1" aria-hidden="true" style="display: none;">
+                  <optgroup label="Metric">
+                    <option value="mm">Millimeters (mm)</option>
+                    <option value="cm" selected>Centimeters (cm)</option>
+                    <option value="m">Meters (m)</option>
+                  </optgroup>
+                  <optgroup label="Imperial">
+                    <option value="in">Inches (in)</option>
+                    <option value="ft">Feet (ft)</option>
+                    <option value="yd">Yards (yd)</option>
+                  </optgroup>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -313,35 +321,53 @@
               <div class="dim-input-col">
                 <label class="dim-col-label" for="inputDimL">Length (L)</label>
                 <div class="dim-input-field-wrap">
-                  <input type="text" id="inputDimL" class="form-input dim-field-input" placeholder="0" autocomplete="off">
+                  <input type="text" id="inputDimL" class="form-input dim-field-input" placeholder="0" autocomplete="off" inputmode="decimal">
                 </div>
               </div>
               <div class="dim-sep" id="sepDimW" aria-hidden="true">×</div>
               <div class="dim-input-col">
                 <label class="dim-col-label" for="inputDimW">Width (W)</label>
                 <div class="dim-input-field-wrap">
-                  <input type="text" id="inputDimW" class="form-input dim-field-input" placeholder="0" autocomplete="off">
+                  <input type="text" id="inputDimW" class="form-input dim-field-input" placeholder="0" autocomplete="off" inputmode="decimal">
                 </div>
               </div>
               <div class="dim-sep" id="sepDimH" aria-hidden="true">×</div>
               <div class="dim-input-col" id="colDimH">
                 <label class="dim-col-label" for="inputDimH">Height (H)</label>
                 <div class="dim-input-field-wrap">
-                  <input type="text" id="inputDimH" class="form-input dim-field-input" placeholder="0" autocomplete="off">
+                  <input type="text" id="inputDimH" class="form-input dim-field-input" placeholder="0" autocomplete="off" inputmode="decimal">
                 </div>
               </div>
             </div>
             <div id="compositeCalcBadge" class="composite-calc-badge" style="display: none;"></div>
           </div>
 
-          <!-- Quick numeric adjustments (shared, applies to active value input) -->
-          <div class="quick-value-helpers">
-            <button type="button" class="helper-btn" data-inc="-1">-1</button>
-            <button type="button" class="helper-btn" data-inc="+1">+1</button>
-            <button type="button" class="helper-btn" data-inc="+0.5">+0.5</button>
-            <button type="button" class="helper-btn" data-frac=" 1/4">¼</button>
-            <button type="button" class="helper-btn" data-frac=" 1/2">½</button>
-            <button type="button" class="helper-btn" data-frac=" 3/4">¾</button>
+          <!-- Quick numeric adjustments & Math / CAD Operator Toolbar -->
+          <div class="quick-value-helpers" id="quickValueHelpers" aria-label="Math and fraction helpers">
+            <button type="button" class="helper-btn helper-cad-key" data-cad=" + " title="Add (+)">+</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad=" - " title="Subtract (−)">−</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad=" * " title="Multiply (×)">×</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad=" / " title="Divide (÷)">÷</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad="(" title="Open parenthesis">(</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad=")" title="Close parenthesis">)</button>
+            <button type="button" class="helper-btn helper-eval-btn" id="btnEvalCadExpr" title="Calculate formula immediately (=)">=</button>
+
+            <span class="helper-divider" aria-hidden="true"></span>
+
+            <button type="button" class="helper-btn" data-frac=" 1/4" title="Add ¼">¼</button>
+            <button type="button" class="helper-btn" data-frac=" 1/2" title="Add ½">½</button>
+            <button type="button" class="helper-btn" data-frac=" 3/4" title="Add ¾">¾</button>
+
+            <span class="helper-divider" aria-hidden="true"></span>
+
+            <button type="button" class="helper-btn helper-cad-key" data-cad="'" title="Feet (')">' (ft)</button>
+            <button type="button" class="helper-btn helper-cad-key" data-cad='"' title='Inches (")'>" (in)</button>
+
+            <span class="helper-divider" aria-hidden="true"></span>
+
+            <button type="button" class="helper-btn" data-inc="-1" title="Subtract 1">-1</button>
+            <button type="button" class="helper-btn" data-inc="+1" title="Add 1">+1</button>
+            <button type="button" class="helper-btn" data-inc="+0.5" title="Add 0.5">+0.5</button>
           </div>
         </div>
 
@@ -938,7 +964,7 @@
           <div class="form-label">Fast Unit Conversion</div>
           <div class="converter-row">
             <div>
-              <input type="text" id="convFromVal" class="form-input" value="10" placeholder="0" autocomplete="off">
+              <input type="text" id="convFromVal" class="form-input" value="10" placeholder="0" autocomplete="off" inputmode="decimal">
               <select id="convFromUnit" class="form-select" style="margin-top: 6px;">
                 <option value="in">Inches (in)</option>
                 <option value="cm" selected>Centimeters (cm)</option>
@@ -973,9 +999,9 @@
           <!-- Quick Area / Volume Calculator -->
           <div class="form-label" style="margin-top: 10px;">Area & Volume Calculator</div>
           <div class="calc-inputs-grid">
-            <input type="text" id="calcL" class="form-input" placeholder="Length" autocomplete="off">
-            <input type="text" id="calcW" class="form-input" placeholder="Width" autocomplete="off">
-            <input type="text" id="calcH" class="form-input" placeholder="Height" autocomplete="off">
+            <input type="text" id="calcL" class="form-input" placeholder="Length" autocomplete="off" inputmode="decimal">
+            <input type="text" id="calcW" class="form-input" placeholder="Width" autocomplete="off" inputmode="decimal">
+            <input type="text" id="calcH" class="form-input" placeholder="Height" autocomplete="off" inputmode="decimal">
           </div>
           <div style="background: var(--bg-input); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-around; text-align: center;">
             <div>

@@ -146,8 +146,9 @@ const PDFGenerator = {
   // Parses a dimension without rounding it to the 3-decimal CAD "value" field,
   // so repeated unit conversions do not drift.
   parseDimensionPrecise(raw, unit) {
-    const str = String(raw || '').trim();
+    let str = String(raw || '').trim();
     if (!str) return NaN;
+    str = str.replace(/^[LWHlwh]\s*:\s*/i, '').trim();
 
     if (typeof window !== 'undefined' && window.CADParser && window.CADParser.parse) {
       const res = window.CADParser.parse(str, unit);
@@ -168,15 +169,21 @@ const PDFGenerator = {
 
     if (str.includes('×') || /(?:\d|['"])\s*[xX]\s*(?:\d|['"])/.test(str) || str.search(/\s+[xX]\s+/) !== -1) {
       return str.split(/\s*[×xX]\s*/).map(part => {
-        const num = this.parseDimensionPrecise(part.trim(), fromUnit);
+        const m = part.trim().match(/^([LWHlwh]):\s*(.*)$/i);
+        const prefix = m ? m[1].toUpperCase() + ': ' : '';
+        const rawDim = m ? m[2] : part.trim();
+        const num = this.parseDimensionPrecise(rawDim, fromUnit);
         if (isNaN(num)) return part.trim();
-        return this.formatLinear(this.convertLinear(num, fromUnit, toUnit), toUnit);
+        return prefix + this.formatLinear(this.convertLinear(num, fromUnit, toUnit), toUnit);
       }).join(' × ');
     }
 
-    const num = this.parseDimensionPrecise(str, fromUnit);
+    const m = str.match(/^([LWHlwh]):\s*(.*)$/i);
+    const prefix = m ? m[1].toUpperCase() + ': ' : '';
+    const rawDim = m ? m[2] : str;
+    const num = this.parseDimensionPrecise(rawDim, fromUnit);
     if (isNaN(num)) return str;
-    return this.formatLinear(this.convertLinear(num, fromUnit, toUnit), toUnit);
+    return prefix + this.formatLinear(this.convertLinear(num, fromUnit, toUnit), toUnit);
   },
 
   cleanPartUnit(val, defaultUnit) {
@@ -222,6 +229,14 @@ const PDFGenerator = {
     if (splitParts.length === 0) return [];
 
     const defaultPrefixes = ['L:', 'W:', 'H:', 'D:'];
+    if (splitParts.length === 2) {
+      const lower = (itemLabel || '').toLowerCase();
+      const isWidthHeight = lower.includes('door') || lower.includes('window') || lower.includes('opening') || lower.includes('elevation') || (lower.includes('height') && lower.includes('width'));
+      if (isWidthHeight) {
+        defaultPrefixes[0] = 'W:';
+        defaultPrefixes[1] = 'H:';
+      }
+    }
 
     if (splitParts.length === 1) {
       const lower = (itemLabel || '').toLowerCase();
@@ -249,11 +264,20 @@ const PDFGenerator = {
     });
   },
 
+  formatFractionHtml(valStr) {
+    if (!valStr || typeof valStr !== 'string') return '';
+    const str = valStr.trim();
+    if (str === '--' || str === '—') return this.escapeHtml(str);
+    const escaped = this.escapeHtml(str);
+    const fracRegex = /(\d+[\/⁄]\d+|[¼½¾⅛⅜⅝⅞])/g;
+    return escaped.replace(fracRegex, match => `<span class="dim-frac print-dim-frac">${match}</span>`);
+  },
+
   // Returns formatted HTML with styled L: / W: / H: badges for the print page
   formatPrintValueHtml(valStr, itemLabel, defaultUnit) {
     const parts = this.parsePrintDimensionParts(valStr, itemLabel, defaultUnit);
-    if (parts.length === 0) return this.escapeHtml(valStr || '—');
-    return parts.map(p => `<span class="print-dim-pfx">${this.escapeHtml(p.prefix)}</span> ${this.escapeHtml(p.value)}`).join(' <span class="print-dim-sep">×</span> ');
+    if (parts.length === 0) return this.formatFractionHtml(valStr || '—');
+    return parts.map(p => `<span class="print-dim-pfx">${this.escapeHtml(p.prefix)}</span> ${this.formatFractionHtml(p.value)}`).join(' <span class="print-dim-sep">×</span> ');
   },
 
   // Returns plain text formatted string with L: / W: / H: prefixes

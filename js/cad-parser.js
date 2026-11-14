@@ -39,6 +39,50 @@ const CADParser = {
   },
 
   /**
+   * Checks if a string is already a clean fraction or single dimension
+   * (e.g. "40 1/2", "3/4", "10 3/16", "1' 5 1/4\"", "40 ½", "12.5")
+   * that should NOT be evaluated or converted into a decimal.
+   */
+  isFractionOrSingleDimension(str) {
+    if (!str || typeof str !== 'string') return false;
+    const s = str.trim();
+    if (!s) return false;
+
+    // Pure fraction: "1/2", "3/4", "15/16", "3/4\""
+    if (/^\d+\s*\/\s*\d+\s*(?:["']|[a-zA-Z]+)?$/.test(s)) return true;
+    // Mixed fraction: "40 1/2", "10 3/16", "5-1/4", "40 1/2\""
+    if (/^\d+[\s-]+\d+\s*\/\s*\d+\s*(?:["']|[a-zA-Z]+)?$/.test(s)) return true;
+    // Unicode vulgar fraction: "40 ½", "½", "¼\""
+    if (/^(?:\d+[\s-]*)?[¼½¾⅛⅜⅝⅞]\s*(?:["']|[a-zA-Z]+)?$/.test(s)) return true;
+    // Architectural: "1' 5\"", "1' 5 1/4\"", "10'"
+    if (/^\d+\s*'\s*(?:\d+(?:[\s-]+\d+\/\d+|[¼½¾⅛⅜⅝⅞])?\s*"?)?$/.test(s)) return true;
+    // Plain number or decimal: "40", "12.5", "10cm", "10\""
+    if (/^\d+(?:\.\d+)?\s*(?:["']|[a-zA-Z]+)?$/.test(s)) return true;
+
+    return false;
+  },
+
+  /**
+   * Checks if a string is an unresolved math formula that needs evaluation
+   * (e.g. "10 + 5", "1' 5\" + 1/4\"", "40 + 1/2", "10 * 2")
+   */
+  isUnresolvedMathExpression(str) {
+    if (!str || typeof str !== 'string') return false;
+    const s = str.trim();
+    if (!s) return false;
+    if (this.isFractionOrSingleDimension(s)) return false;
+
+    // Contains math operator (+, *, math division, parentheses, or arithmetic subtraction)
+    if (/[+*()]/.test(s)) return true;
+    // Subtraction operator: "-" between operands (not hyphenated fraction like 10-1/2 or negative -5)
+    if (/(?:\d|['"])\s*-\s*(?:\d|['"])/.test(s) && !/^\d+-\d+\/\d+$/.test(s)) return true;
+    // Multiple slashes or division formula
+    if (/\/.+\//.test(s)) return true;
+
+    return false;
+  },
+
+  /**
    * Parses and evaluates any CAD dimension expression
    * e.g. "1' 5\" + 1/4\"" -> { value: 17.25, inches: 17.25, formatted: "1' 5 1/4\"", isExpression: true }
    */
@@ -46,6 +90,9 @@ const CADParser = {
     if (!exprStr || typeof exprStr !== 'string') return null;
     let s = exprStr.trim();
     if (!s) return null;
+
+    // Strip leading L: / W: / H: prefix if present
+    s = s.replace(/^[LWHlwh]\s*:\s*/i, '').trim();
 
     const hasExplicitUnit = /['"a-zA-Z]/.test(s);
     const hasImperialUnit = /['"]|\b(ft|feet|foot|in|inch|inches|yd|yard)\b/i.test(s);
@@ -76,9 +123,9 @@ const CADParser = {
     // 1. Detect mixed fraction e.g. "5 1/4\"" -> "(5 + 1/4)\""
     s = s.replace(/(\d+)\s+(\d+\/\d+)(['"a-zA-Z]*)/g, "($1 + $2)$3");
 
-    // Pure metric context: no imperial units present, targetUnit is metric (or expression has no explicit units)
+    // Pure metric context: no imperial units present and targetUnit is metric
     const isTargetMetric = (targetUnit === 'cm' || targetUnit === 'mm' || targetUnit === 'm');
-    if (!hasImperialUnit && (isTargetMetric || !hasExplicitUnit)) {
+    if (!hasImperialUnit && isTargetMetric) {
       const metricFactors = { mm: 0.001, cm: 0.01, m: 1.0 };
       const targetFactor = metricFactors[targetUnit] || 0.01;
 
@@ -254,6 +301,37 @@ const CADParser = {
   },
 
   /**
+   * Formats decimal inches as pure fractional inches e.g. 40.5 -> "40 1/2", 0.5 -> "1/2"
+   * (Without converting whole inches into feet)
+   */
+  formatInchesFraction(totalInches, precision = 16) {
+    if (totalInches === null || totalInches === undefined || isNaN(totalInches)) return '';
+    const sign = totalInches < 0 ? '-' : '';
+    const absIn = Math.abs(totalInches);
+    let wholeIn = Math.floor(absIn);
+    const fracIn = absIn - wholeIn;
+
+    let sixteenths = Math.round(fracIn * precision);
+    if (sixteenths === precision) {
+      wholeIn += 1;
+      sixteenths = 0;
+    }
+
+    let fracStr = '';
+    if (sixteenths > 0) {
+      if (sixteenths % 8 === 0) fracStr = `${sixteenths / 8}/2`;
+      else if (sixteenths % 4 === 0) fracStr = `${sixteenths / 4}/4`;
+      else if (sixteenths % 2 === 0) fracStr = `${sixteenths / 2}/8`;
+      else fracStr = `${sixteenths}/16`;
+    }
+
+    if (wholeIn > 0 && fracStr) return `${sign}${wholeIn} ${fracStr}`;
+    if (wholeIn > 0) return `${sign}${wholeIn}`;
+    if (fracStr) return `${sign}${fracStr}`;
+    return '0';
+  },
+
+  /**
    * Returns a friendly live preview string for CAD expression inputs:
    * e.g. "= 1' 5 ¼\" (17.25 in)" or "= 43.82 cm (1' 5 ¼\")"
    */
@@ -317,21 +395,49 @@ const CADParser = {
     if (isComposite) {
       const parts = str.split(/\s*[×xX]\s*/);
       return parts.map(p => {
-        const parsed = this.parse(p, targetUnit);
-        if (parsed && (p.includes('+') || p.includes('-') || p.includes('*') || p.includes('/'))) {
-          return (targetUnit === 'in' || targetUnit === 'ft' || targetUnit === "'") ? (parsed.formatted || String(parsed.value)) : String(parsed.value);
+        const m = p.trim().match(/^([LWHlwh]):\s*(.*)$/i);
+        const prefix = m ? m[1].toUpperCase() + ': ' : '';
+        const rawDim = m ? m[2].trim() : p.trim();
+
+        // If it's already a clean fraction or single dimension, keep it as-is!
+        if (this.isFractionOrSingleDimension(rawDim)) {
+          return prefix + rawDim;
+        }
+
+        const parsed = this.parse(rawDim, targetUnit);
+        if (parsed && this.isUnresolvedMathExpression(rawDim)) {
+          const hasFeet = rawDim.includes("'");
+          const val = (targetUnit === 'in' && !hasFeet)
+            ? (this.formatInchesFraction(parsed.inches) || parsed.formatted || String(parsed.value))
+            : (targetUnit === 'ft' || targetUnit === "'" || hasFeet)
+              ? (parsed.formatted || String(parsed.value))
+              : String(parsed.value);
+          return prefix + val;
         }
         return p;
       }).join(' × ');
     }
 
     // Single value
-    const parsed = this.parse(str, targetUnit);
-    if (parsed && (str.includes('+') || str.includes('-') || str.includes('*') || str.includes('/'))) {
-      if (targetUnit === 'in' || targetUnit === 'ft' || targetUnit === "'") {
-        return parsed.formatted || String(parsed.value);
+    const m = str.match(/^([LWHlwh]):\s*(.*)$/i);
+    const prefix = m ? m[1].toUpperCase() + ': ' : '';
+    const rawDim = m ? m[2].trim() : str;
+
+    // If it's already a clean fraction or single dimension, keep it as-is!
+    if (this.isFractionOrSingleDimension(rawDim)) {
+      return prefix + rawDim;
+    }
+
+    const parsed = this.parse(rawDim, targetUnit);
+    if (parsed && this.isUnresolvedMathExpression(rawDim)) {
+      const hasFeet = rawDim.includes("'");
+      if (targetUnit === 'in' && !hasFeet) {
+        return prefix + (this.formatInchesFraction(parsed.inches) || parsed.formatted || String(parsed.value));
       }
-      return String(parsed.value);
+      if (targetUnit === 'ft' || targetUnit === "'" || hasFeet) {
+        return prefix + (parsed.formatted || String(parsed.value));
+      }
+      return prefix + String(parsed.value);
     }
 
     return str;
